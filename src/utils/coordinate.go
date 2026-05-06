@@ -7,6 +7,18 @@ type Coordinate struct {
 	y float64
 }
 
+func NewCoordinate(x float64, y float64) Coordinate {
+	return Coordinate{x: x, y: y}
+}
+
+func (ca Coordinate) X() float64 {
+	return ca.x
+}
+
+func (ca Coordinate) Y() float64 {
+	return ca.y
+}
+
 func (ca *Coordinate) Add(dx float64, dy float64) {
 	ca.x += dx
 	ca.y += dy

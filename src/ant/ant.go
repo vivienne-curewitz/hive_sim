@@ -28,13 +28,15 @@ type WorkerAnt struct {
 	Speed       float64
 }
 
-func NewWorkerAnt(pos utils.Coordinate) *WorkerAnt {
-	return &WorkerAnt{
-		ID:        uuid.New(),
-		Pos:       pos,
-		hunger:    0.0,
-		tiredness: 0.0,
-		hitpoints: 100.0,
+func NewWorkerAnt(pos utils.Coordinate) WorkerAnt {
+	return WorkerAnt{
+		ID:          uuid.New(),
+		Pos:         pos,
+		hunger:      0.0,
+		tiredness:   0.0,
+		hitpoints:   100.0,
+		Speed:       1.0,
+		Destination: nil,
 	}
 }
 
