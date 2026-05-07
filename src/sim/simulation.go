@@ -3,6 +3,7 @@ package sim
 import (
 	"log"
 	"math/rand/v2"
+	"runtime"
 	"sync"
 	"time"
 
@@ -23,12 +24,15 @@ type Simulation struct {
 	// fast ant lookup if necessary
 	Ants map[uuid.UUID]ant.Ant
 	// where the ants live in memory
-	WorkerAnts  []ant.WorkerAnt
-	Resources   map[uuid.UUID]*world.Resource
-	World       *world.World
-	StepCount   int
-	StepTimeSum int
-	Pheremones  []ant.PheremoneMark
+	WorkerAnts []ant.WorkerAnt
+	Resources  map[uuid.UUID]*world.Resource
+	World      *world.World
+
+	Pheremones []ant.PheremoneMark
+	// bench mark stuff
+	StepCount        int
+	StepTimeSum      int
+	PheremoneTimeSum int
 }
 
 func NewSimulation(timeStep, duration float64) *Simulation {
@@ -53,11 +57,11 @@ func (s *Simulation) Init() {
 	}
 }
 
-func (s *Simulation) SingleStep(timeStepMs float64) {
+func (s *Simulation) SingleStep() {
 	// start go routines
 	startTime := time.Now().UnixMicro()
 	if true {
-		processors := 4
+		processors := runtime.NumCPU()
 		wg := sync.WaitGroup{}
 		wg.Add(processors)
 		for pi := range processors {
@@ -65,7 +69,7 @@ func (s *Simulation) SingleStep(timeStepMs float64) {
 				startInd := len(s.WorkerAnts) / processors * pi
 				for startInd < len(s.WorkerAnts)/processors*(pi+1) {
 					ant := &s.WorkerAnts[startInd]
-					ant.Step(timeStepMs)
+					ant.Step(s.TimeStep)
 					startInd++
 				}
 				wg.Done()
@@ -77,7 +81,7 @@ func (s *Simulation) SingleStep(timeStepMs float64) {
 		// first, phase 1 -- mostly movement
 		for i := range len(s.WorkerAnts) {
 			ant := &s.WorkerAnts[i]
-			ant.Move(timeStepMs)
+			ant.Move(s.TimeStep)
 		}
 	}
 	s.StepCount++
@@ -88,10 +92,18 @@ func (s *Simulation) SingleStep(timeStepMs float64) {
 	}
 	// then, phase 2 -- interactions with other -- attack other ant, take resource, etc
 	// pheremones first
-	sprayAnts := rand.Perm(len(s.WorkerAnts))[:len(s.WorkerAnts)*int(ant.PheremoneFrequency)]
+	phStartTime := time.Now().UnixMicro()
+	s.World.CullPheremones(s.CurrentTime)
+	num_to_spray := int(float64(len(s.WorkerAnts)) * ant.PheremoneFrequency * s.TimeStep)
+	sprayAnts := rand.Perm(len(s.WorkerAnts))[:num_to_spray]
 	for _, ant := range sprayAnts {
-		ph := s.WorkerAnts[ant].SprayPheremone(timeStepMs)
+		ph := s.WorkerAnts[ant].SprayPheremone(s.CurrentTime)
 		s.World.AddPheremone(ph)
+	}
+	s.PheremoneTimeSum += int(time.Now().UnixMicro() - phStartTime)
+	if s.StepCount%60 == 0 {
+		log.Printf("Pheremone spraying average %d microseconds\n", s.PheremoneTimeSum/60)
+		s.PheremoneTimeSum = 0
 	}
 	// phase 3 -- resolution
 

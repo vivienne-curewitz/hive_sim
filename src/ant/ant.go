@@ -84,7 +84,7 @@ func (wa *WorkerAnt) FindBearings() {
 	wa.Direction = homeDir
 }
 
-func (wa *WorkerAnt) SprayPheremone(timeStepMs float64) PheremoneMark {
+func (wa *WorkerAnt) SprayPheremone(currentTime float64) PheremoneMark {
 	newLm := Landmark{
 		Position: wa.Pos,
 		Type:     wa.LastKnownLandmark.Type,
@@ -93,7 +93,7 @@ func (wa *WorkerAnt) SprayPheremone(timeStepMs float64) PheremoneMark {
 		Type:       newLm.Type,
 		Pos:        wa.Pos,
 		Direction:  wa.Pos.AngleTo(wa.LastKnownLandmark.Position),
-		Expiration: PheremoneLifetime + timeStepMs,
+		Expiration: PheremoneLifetime + currentTime,
 	}
 	wa.LastKnownLandmark = newLm
 	return ph

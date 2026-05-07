@@ -113,24 +113,11 @@ func (w *World) Init() {
 
 func (w *World) CullPheremones(currentTime float64) {
 	// binary search for most recently expired pheremone
-	index := len(w.Pheremones) / 2
-	step := index / 2
-	for {
-		ph := &w.Pheremones[index]
-		if ph.Expiration < currentTime && w.Pheremones[(index+1)%len(w.Pheremones)].Expiration > currentTime {
-			// found
-			w.FirstValidPheremone = index
-			break
-		} else if ph.Expiration < currentTime {
-			index = (index + step) % len(w.Pheremones)
-			if step > 1 {
-				step = step / 2
-			}
+	for i := w.FirstValidPheremone; i != w.LastPheremoneIndex; i = (i + 1) % len(w.Pheremones) {
+		if w.Pheremones[i].Expiration < currentTime {
+			w.FirstValidPheremone = (i + 1) % len(w.Pheremones)
 		} else {
-			index = (index - step) % len(w.Pheremones)
-			if step > 1 {
-				step = step / 2
-			}
+			break
 		}
 	}
 }
@@ -138,4 +125,12 @@ func (w *World) CullPheremones(currentTime float64) {
 func (w *World) AddPheremone(ph ant.PheremoneMark) {
 	w.LastPheremoneIndex = (w.LastPheremoneIndex + 1) % len(w.Pheremones)
 	w.Pheremones[w.LastPheremoneIndex] = ph
+}
+
+func (w *World) GetPheremones() []ant.PheremoneMark {
+	if w.LastPheremoneIndex >= w.FirstValidPheremone {
+		return w.Pheremones[w.FirstValidPheremone : w.LastPheremoneIndex+1]
+	} else {
+		return append(w.Pheremones[w.FirstValidPheremone:], w.Pheremones[:w.LastPheremoneIndex+1]...)
+	}
 }
