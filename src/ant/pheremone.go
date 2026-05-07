@@ -22,10 +22,6 @@ type PheremoneMark struct {
 	Type Pheremone
 	Pos  utils.Coordinate
 	// points to the last dropped pheremonemark, forming a chain
-	Direction         float64
-	LifeTimeRemaining int64
-}
-
-func (ph *PheremoneMark) Step(step int64) {
-	ph.LifeTimeRemaining -= step
+	Direction  float64
+	Expiration float64
 }

@@ -12,11 +12,12 @@ import (
 )
 
 type Game struct {
-	HiveSim *sim.Simulation
+	HiveSim   *sim.Simulation
+	frametime float64
 }
 
 func (g *Game) Update() error {
-	g.HiveSim.SingleStep()
+	g.HiveSim.SingleStep(g.frametime)
 	return nil
 }
 
@@ -50,12 +51,14 @@ func (g *Game) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHeigh
 }
 
 func main() {
+	tps := 60
 	hive_sim := sim.NewSimulation(0.1, 100)
 	hive_sim.Init()
 
 	ebiten.SetWindowSize(1000, 1000)
 	ebiten.SetWindowTitle("Hello, World!")
-	if err := ebiten.RunGame(&Game{HiveSim: hive_sim}); err != nil {
+	ebiten.SetTPS(tps) // 60 FPS
+	if err := ebiten.RunGame(&Game{HiveSim: hive_sim, frametime: 1.0 / float64(tps)}); err != nil {
 		log.Fatal(err)
 	}
 }

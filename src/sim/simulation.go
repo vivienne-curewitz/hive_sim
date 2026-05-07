@@ -28,6 +28,7 @@ type Simulation struct {
 	World       *world.World
 	StepCount   int
 	StepTimeSum int
+	Pheremones  []ant.PheremoneMark
 }
 
 func NewSimulation(timeStep, duration float64) *Simulation {
@@ -52,7 +53,7 @@ func (s *Simulation) Init() {
 	}
 }
 
-func (s *Simulation) SingleStep() {
+func (s *Simulation) SingleStep(timeStepMs float64) {
 	// start go routines
 	startTime := time.Now().UnixMicro()
 	if true {
@@ -64,7 +65,7 @@ func (s *Simulation) SingleStep() {
 				startInd := len(s.WorkerAnts) / processors * pi
 				for startInd < len(s.WorkerAnts)/processors*(pi+1) {
 					ant := &s.WorkerAnts[startInd]
-					ant.Move()
+					ant.Step(timeStepMs)
 					startInd++
 				}
 				wg.Done()
@@ -76,7 +77,7 @@ func (s *Simulation) SingleStep() {
 		// first, phase 1 -- mostly movement
 		for i := range len(s.WorkerAnts) {
 			ant := &s.WorkerAnts[i]
-			ant.Move()
+			ant.Move(timeStepMs)
 		}
 	}
 	s.StepCount++
@@ -86,7 +87,12 @@ func (s *Simulation) SingleStep() {
 		s.StepTimeSum = 0
 	}
 	// then, phase 2 -- interactions with other -- attack other ant, take resource, etc
-
+	// pheremones first
+	sprayAnts := rand.Perm(len(s.WorkerAnts))[:len(s.WorkerAnts)*int(ant.PheremoneFrequency)]
+	for _, ant := range sprayAnts {
+		ph := s.WorkerAnts[ant].SprayPheremone(timeStepMs)
+		s.World.AddPheremone(ph)
+	}
 	// phase 3 -- resolution
 
 	// update simulation
