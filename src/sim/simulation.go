@@ -108,5 +108,5 @@ func (s *Simulation) SingleStep() {
 	// phase 3 -- resolution
 
 	// update simulation
-	s.CurrentTime += s.TimeStep
+	s.CurrentTime += s.TimeStep * 1000
 }

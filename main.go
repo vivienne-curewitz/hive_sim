@@ -55,18 +55,28 @@ func DrawWorld(screen *ebiten.Image, w *world.World) {
 	}
 }
 
+func DrawAnts(screen *ebiten.Image, ants []ant.WorkerAnt) {
+	cameraX := screen.Bounds().Dx() / 2
+	cameraY := screen.Bounds().Dy() / 2
+	for _, ant := range ants {
+		var acolor color.RGBA
+		switch {
+		case ant.Exhausted:
+			acolor = color.RGBA{255, 0, 0, 255}
+		default:
+			acolor = color.RGBA{255, 255, 255, 255}
+		}
+		vector.FillRect(screen, float32(cameraX)-float32(ant.Pos.X()), float32(cameraY)-float32(ant.Pos.Y()), 1, 1, acolor, false)
+	}
+}
 func (g *Game) Draw(screen *ebiten.Image) {
 	// log.Printf("Worker ants: %d\n", len(g.HiveSim.WorkerAnts))
 	// the silly way with vectors for now
 	DrawWorld(screen, g.HiveSim.World)
-	// draw ants
-	cameraX := screen.Bounds().Dx() / 2
-	cameraY := screen.Bounds().Dy() / 2
-	for _, ant := range g.HiveSim.WorkerAnts {
-		vector.FillRect(screen, float32(cameraX)-float32(ant.Pos.X()), float32(cameraY)-float32(ant.Pos.Y()), 1, 1, color.White, false)
-	}
 	// draw pheremones
 	DrawPheremones(screen, g.HiveSim.World.GetPheremones())
+	// draw ants
+	DrawAnts(screen, g.HiveSim.WorkerAnts)
 }
 
 func (g *Game) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHeight int) {

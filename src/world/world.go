@@ -3,6 +3,7 @@ package world
 import (
 	"image/color"
 	"math/rand/v2"
+	"time"
 
 	"hive_sim/src/ant"
 )
@@ -15,14 +16,20 @@ const (
 	Flower
 )
 
+type AveragePheremone struct {
+	Mark  ant.PheremoneMark
+	Count int
+}
+
 type World struct {
-	height              int
-	length              int
-	time                int32
-	Cells               [][]Cell
-	Pheremones          []ant.PheremoneMark
-	LastPheremoneIndex  int
-	FirstValidPheremone int
+	height               int
+	length               int
+	time                 int32
+	Cells                [][]Cell
+	Pheremones           []ant.PheremoneMark
+	AveragePheremoneCell [][]map[ant.Pheremone]AveragePheremone
+	LastPheremoneIndex   int
+	FirstValidPheremone  int
 }
 
 func NewWorld(height, length int) *World {
@@ -81,7 +88,7 @@ func (w *World) getSurroundingCount(i int, j int) (float64, float64) {
 
 func (w *World) Init() {
 	// initialize world state here
-	const seed uint64 = 8675309
+	var seed uint64 = uint64(time.Now().UnixMilli())
 	rs := rand.New(rand.NewPCG(seed, seed))
 	const genRange float64 = 12
 	w.Cells = make([][]Cell, w.length)
@@ -109,6 +116,10 @@ func (w *World) Init() {
 	}
 	// init Pheremones
 	w.Pheremones = make([]ant.PheremoneMark, 1_000_000)
+	w.AveragePheremoneCell = make([][]map[ant.Pheremone]AveragePheremone, w.length)
+	for i := 0; i < w.length; i++ {
+		w.AveragePheremoneCell[i] = make([]map[ant.Pheremone]AveragePheremone, w.height)
+	}
 }
 
 func (w *World) CullPheremones(currentTime float64) {
@@ -125,6 +136,13 @@ func (w *World) CullPheremones(currentTime float64) {
 func (w *World) AddPheremone(ph ant.PheremoneMark) {
 	w.LastPheremoneIndex = (w.LastPheremoneIndex + 1) % len(w.Pheremones)
 	w.Pheremones[w.LastPheremoneIndex] = ph
+	// add to Pheremone cell
+	avgPh, exists := w.AveragePheremoneCell[int(ph.Pos.X())][int(ph.Pos.Y())][ph.Type]
+	if !exists {
+		avgPh = AveragePheremone{Mark: ph, Count: 1}
+	}
+	avgPh.Count++
+	w.AveragePheremoneCell[int(ph.Pos.X())][int(ph.Pos.Y())][ph.Type] = avgPh
 }
 
 func (w *World) GetPheremones() []ant.PheremoneMark {

@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	ExhaustionRate float64 = 0.01
+	ExhaustionRate float64 = 0.1
 	MaxHunger      float64 = 100.0
 	MaxThirst      float64 = 100.0
 )
@@ -80,6 +80,7 @@ func (wa *WorkerAnt) Step(timeStepMs float64) {
 
 func (wa *WorkerAnt) FindBearings() {
 	// look for best pheremone based on hunger or thirst, otherwise move towards home
+	// currently only pheremone is home
 	homeDir := wa.Pos.AngleTo(utils.NewCoordinate(0, 0))
 	wa.Direction = homeDir
 }
@@ -106,7 +107,7 @@ func (wa *WorkerAnt) Move(timeStepMs float64) {
 	dx := math.Cos(wa.Direction) * wa.Speed * timeStepMs
 	dy := math.Sin(wa.Direction) * wa.Speed * timeStepMs
 	wa.Pos.Add(dx, dy)
-	deltaTheta := rand.Float64()*0.4 - 0.2 // small random change in direction
+	deltaTheta := rand.Float64()*0.8 - 0.4 // small random change in direction
 	wa.Direction += deltaTheta
 	wa.Direction = math.Mod(wa.Direction, 2*math.Pi)
 }
