@@ -3,6 +3,7 @@ package main
 import (
 	"image/color"
 	"log"
+	"time"
 
 	"hive_sim/src/ant"
 	"hive_sim/src/camera"
@@ -20,18 +21,16 @@ type Game struct {
 }
 
 func CameraControl(cam *camera.Camera) {
-	// case zoom in/out with mouse wheel
-	_, dy := ebiten.Wheel()
-	//	if dx != 0 {
-	//		cam.Zoom(dx*10) // Pan horizontally
-	//	}
-	if dy != 0 {
-		cam.Zoom(dy) // Pan vertically
-	}
-	if ebiten.IsMouseButtonPressed(ebiten.MouseButtonWheelUp) {
-		cam.Zoom(0.9) // Zoom in
-	} else if ebiten.IsMouseButtonPressed(ebiten.MouseButtonWheelDown) {
-		cam.Zoom(1.1) // Zoom out
+	for {
+		// case zoom in/out with mouse wheel
+		_, dy := ebiten.Wheel()
+		// log.Printf("Wheel: dx=%f, dy=%f\n", dx, dy)
+		if dy != 0 {
+			sf := 100.0
+			log.Printf("Zoom Factor: %.6f\n", (sf-dy)/sf)
+			cam.Zoom((sf - dy) / sf) // Pan vertically
+			time.Sleep(500 * time.Microsecond)
+		}
 	}
 	// case click and drag
 }
@@ -123,6 +122,7 @@ func main() {
 	ebiten.SetWindowSize(1000, 1000)
 	ebiten.SetWindowTitle("Hello, World!")
 	ebiten.SetTPS(tps) // 60 FPS
+	go CameraControl(&cam)
 	if err := ebiten.RunGame(&game); err != nil {
 		log.Fatal(err)
 	}
