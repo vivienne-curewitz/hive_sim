@@ -14,30 +14,43 @@ import (
 )
 
 type Game struct {
-	HiveSim   *sim.Simulation
-	frametime float64
-	Camera    *camera.Camera
+	HiveSim        *sim.Simulation
+	frametime      float64
+	Camera         *camera.Camera
+	CursorPosition CursorPos
 }
 
-func CameraControl(cam *camera.Camera) {
+type CursorPos struct {
+	X int
+	Y int
+}
+
+func CameraControl(cam *camera.Camera, prevCursorPos *CursorPos) {
 	// case zoom in/out with mouse wheel
 	_, dy := ebiten.Wheel()
 	// log.Printf("Wheel: dx=%f, dy=%f\n", dx, dy)
 	if dy != 0 {
 		cam.Zoom(10.0 * dy) // Pan vertically
 		// time.Sleep(500 * time.Microsecond)
+	} else if ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) {
+		cx, cy := ebiten.CursorPosition()
+		dx := float64(prevCursorPos.X - cx)
+		dy = float64(prevCursorPos.Y - cy)
+		xs, ys := cam.GetScale()
+		cam.Move(dx/float64(xs), dy/float64(ys)) // dx is in pixels, xs is pixels/world_unit, dx/xs is pixels/pixels/world_unit = pixels*(world_unit/pixels) = world_unit
 	}
+	prevCursorPos.X, prevCursorPos.Y = ebiten.CursorPosition()
 	// case click and drag
 }
 
 func (g *Game) Update() error {
-	go CameraControl(g.Camera)
+	go CameraControl(g.Camera, &g.CursorPosition)
 	g.HiveSim.SingleStep()
 	return nil
 }
 
 func DrawPheremones(screen *ebiten.Image, pheremones []ant.PheremoneMark, w *world.World, cam *camera.Camera) {
-	x_scale, y_scale := cam.GetScale(screen)
+	x_scale, y_scale := cam.GetScale()
 	bounds := cam.GetBounds()
 	for _, ph := range pheremones {
 		if !camera.InBounds(ph.Pos, bounds) {
@@ -61,12 +74,12 @@ func DrawPheremones(screen *ebiten.Image, pheremones []ant.PheremoneMark, w *wor
 }
 
 func DrawWorld(screen *ebiten.Image, w *world.World, cam *camera.Camera) {
-	x_scale, y_scale := cam.GetScale(screen)
+	x_scale, y_scale := cam.GetScale()
 	bounds := cam.GetBounds()
 	var x, y float32 = 0, 0
 	// first rectangle at 0,0 (top left, top right??)
 	for i := bounds.Min.X; i < bounds.Max.X; i += 1 {
-		for j := bounds.Min.X; j < bounds.Max.X; j += 1 {
+		for j := bounds.Min.Y; j < bounds.Max.Y; j += 1 {
 			x = (float32(i) - float32(bounds.Min.X)) * x_scale
 			y = (float32(j) - float32(bounds.Min.Y)) * y_scale
 			vector.FillRect(screen, x, y, x_scale, y_scale, w.GetColor(i, j), false)
@@ -75,7 +88,7 @@ func DrawWorld(screen *ebiten.Image, w *world.World, cam *camera.Camera) {
 }
 
 func DrawAnts(screen *ebiten.Image, ants []ant.WorkerAnt, w *world.World, cam *camera.Camera) {
-	x_scale, y_scale := cam.GetScale(screen)
+	x_scale, y_scale := cam.GetScale()
 	bounds := cam.GetBounds()
 	for _, ant := range ants {
 		if !camera.InBounds(ant.Pos, bounds) {
@@ -95,6 +108,7 @@ func DrawAnts(screen *ebiten.Image, ants []ant.WorkerAnt, w *world.World, cam *c
 }
 
 func (g *Game) Draw(screen *ebiten.Image) {
+	g.Camera.SetScale(screen)
 	// log.Printf("Worker ants: %d\n", len(g.HiveSim.WorkerAnts))
 	// the silly way with vectors for now
 	DrawWorld(screen, g.HiveSim.World, g.Camera)
