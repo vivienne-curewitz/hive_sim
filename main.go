@@ -19,6 +19,23 @@ type Game struct {
 	Camera    *camera.Camera
 }
 
+func CameraControl(cam *camera.Camera) {
+	// case zoom in/out with mouse wheel
+	_, dy := ebiten.Wheel()
+	//	if dx != 0 {
+	//		cam.Zoom(dx*10) // Pan horizontally
+	//	}
+	if dy != 0 {
+		cam.Zoom(dy) // Pan vertically
+	}
+	if ebiten.IsMouseButtonPressed(ebiten.MouseButtonWheelUp) {
+		cam.Zoom(0.9) // Zoom in
+	} else if ebiten.IsMouseButtonPressed(ebiten.MouseButtonWheelDown) {
+		cam.Zoom(1.1) // Zoom out
+	}
+	// case click and drag
+}
+
 func (g *Game) Update() error {
 	g.HiveSim.SingleStep()
 	return nil
