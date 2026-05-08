@@ -54,7 +54,7 @@ func NewWorkerAnt(pos utils.Coordinate) WorkerAnt {
 		tiredness:         0.0,
 		hitpoints:         100.0,
 		Speed:             1.0,
-		Direction:         -1.0,
+		Direction:         rand.Float64() * 2 * math.Pi,
 		LastKnownLandmark: getHomeLandmark(),
 		Exhausted:         false,
 	}
@@ -101,15 +101,15 @@ func (wa *WorkerAnt) SprayPheremone(currentTime float64) PheremoneMark {
 }
 
 func (wa *WorkerAnt) Move(timeStepMs float64) {
-	if wa.Direction < 0.0 {
-		wa.Direction = rand.Float64() * 2 * math.Pi
-	}
 	dx := math.Cos(wa.Direction) * wa.Speed * timeStepMs
 	dy := math.Sin(wa.Direction) * wa.Speed * timeStepMs
 	wa.Pos.Add(dx, dy)
 	deltaTheta := rand.Float64()*0.8 - 0.4 // small random change in direction
 	wa.Direction += deltaTheta
 	wa.Direction = math.Mod(wa.Direction, 2*math.Pi)
+	if wa.Direction < 0 {
+		wa.Direction += 2 * math.Pi
+	}
 }
 
 // just a stub - Eat, Drink, Rest all need backbone later

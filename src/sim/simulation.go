@@ -42,15 +42,17 @@ func NewSimulation(timeStep, duration float64) *Simulation {
 		CurrentTime: 0,
 		Ants:        make(map[uuid.UUID]ant.Ant),
 		Resources:   make(map[uuid.UUID]*world.Resource),
-		World:       world.NewWorld(100, 100), // Example world size
+		World:       world.NewWorld(500, 500), // Example world size
 	}
 }
 
 func (s *Simulation) Init() {
 	s.WorkerAnts = make([]ant.WorkerAnt, 10000)
+	cx := float64(s.World.Length() / 2)
+	cy := float64(s.World.Height() / 2)
 	for i := range 10000 {
-		cx := rand.Float64() * 10
-		cy := rand.Float64() * 10
+		cx := rand.Float64()*10 - 5 + cx
+		cy := rand.Float64()*10 - 5 + cy
 		wa := ant.NewWorkerAnt(utils.NewCoordinate(cx, cy))
 		s.WorkerAnts[i] = wa
 		s.Ants[wa.ID] = &s.WorkerAnts[i]

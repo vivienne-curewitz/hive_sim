@@ -21,6 +21,7 @@ type AveragePheremone struct {
 	Count int
 }
 
+// ALL WORLD COORDINATES ARE POSITIVE
 type World struct {
 	height               int
 	length               int
@@ -117,8 +118,11 @@ func (w *World) Init() {
 	// init Pheremones
 	w.Pheremones = make([]ant.PheremoneMark, 1_000_000)
 	w.AveragePheremoneCell = make([][]map[ant.Pheremone]AveragePheremone, w.length)
-	for i := 0; i < w.length; i++ {
+	for i := 0; i < w.length; i += 1 {
 		w.AveragePheremoneCell[i] = make([]map[ant.Pheremone]AveragePheremone, w.height)
+		for j := 0; j < w.height; j += 1 {
+			w.AveragePheremoneCell[i][j] = make(map[ant.Pheremone]AveragePheremone)
+		}
 	}
 }
 
@@ -126,8 +130,19 @@ func (w *World) CullPheremones(currentTime float64) {
 	// binary search for most recently expired pheremone
 	for i := w.FirstValidPheremone; i != w.LastPheremoneIndex; i = (i + 1) % len(w.Pheremones) {
 		if w.Pheremones[i].Expiration < currentTime {
-			w.FirstValidPheremone = (i + 1) % len(w.Pheremones)
+			ph := w.Pheremones[i]
+			cx := int(ph.Pos.X())
+			cy := int(ph.Pos.Y())
+			avgPh, exists := w.AveragePheremoneCell[cx][cy][ph.Type]
+			if !exists {
+				// shouldn't happen
+				continue
+			}
+			avgPh.Mark.Direction = (avgPh.Mark.Direction*float64(avgPh.Count) - ph.Direction) * (1.0 / float64(avgPh.Count-1)) // update average direction
+			avgPh.Count -= 1
+			w.AveragePheremoneCell[cx][cy][ph.Type] = avgPh
 		} else {
+			w.FirstValidPheremone = i
 			break
 		}
 	}
@@ -137,12 +152,15 @@ func (w *World) AddPheremone(ph ant.PheremoneMark) {
 	w.LastPheremoneIndex = (w.LastPheremoneIndex + 1) % len(w.Pheremones)
 	w.Pheremones[w.LastPheremoneIndex] = ph
 	// add to Pheremone cell
-	avgPh, exists := w.AveragePheremoneCell[int(ph.Pos.X())][int(ph.Pos.Y())][ph.Type]
+	cx := int(ph.Pos.X())
+	cy := int(ph.Pos.Y())
+	avgPh, exists := w.AveragePheremoneCell[cx][cy][ph.Type]
 	if !exists {
 		avgPh = AveragePheremone{Mark: ph, Count: 1}
 	}
 	avgPh.Count++
-	w.AveragePheremoneCell[int(ph.Pos.X())][int(ph.Pos.Y())][ph.Type] = avgPh
+	avgPh.Mark.Direction = avgPh.Mark.Direction*((float64(avgPh.Count)-1)/float64(avgPh.Count)) + ph.Direction*(1.0/float64(avgPh.Count)) // update average direction
+	w.AveragePheremoneCell[cx][cy][ph.Type] = avgPh
 }
 
 func (w *World) GetPheremones() []ant.PheremoneMark {
