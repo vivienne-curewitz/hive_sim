@@ -58,7 +58,7 @@ type WorkerAnt struct {
 	CurrentAction     Action
 }
 
-func NewWorkerAnt(pos utils.Coordinate) WorkerAnt {
+func NewWorkerAnt(pos utils.Coordinate, home utils.Coordinate) WorkerAnt {
 	return WorkerAnt{
 		ID:                uuid.New(),
 		Pos:               pos,
@@ -67,15 +67,15 @@ func NewWorkerAnt(pos utils.Coordinate) WorkerAnt {
 		hitpoints:         100.0,
 		Speed:             1.0,
 		Direction:         rand.Float64() * 2 * math.Pi,
-		LastKnownLandmark: getHomeLandmark(),
+		LastKnownLandmark: getHomeLandmark(home),
 		Exhausted:         false,
 		CurrentAction:     Wander,
 	}
 }
 
-func getHomeLandmark() Landmark {
+func getHomeLandmark(home utils.Coordinate) Landmark {
 	return Landmark{
-		Position: utils.NewCoordinate(0, 0),
+		Position: home,
 		Type:     pheremone.PheremoneHome,
 	}
 }
@@ -179,6 +179,10 @@ func (wa *WorkerAnt) ChooseAction(w *world.World, home utils.Coordinate) {
 			hph, hexists := w.GetAveragePheremones(wa.Pos)[pheremone.PheremoneHome]
 			if hexists {
 				wa.Direction = hph.AverageDirection()
+				//wa.Direction += rand.Float64() * 2 * math.Pi
+				//if wa.Direction < 0.0 {
+				//	wa.Direction += 2 * math.Pi
+				//}
 			}
 
 		}
@@ -197,6 +201,10 @@ func (wa *WorkerAnt) ChooseAction(w *world.World, home utils.Coordinate) {
 			fph, exists := w.GetAveragePheremones(wa.Pos)[pheremone.PheremoneFood]
 			if exists {
 				wa.Direction = fph.AverageDirection()
+				//wa.Direction += rand.Float64() * 2 * math.Pi
+				//if wa.Direction < 0.0 {
+				//	wa.Direction += 2 * math.Pi
+				//}
 			}
 		}
 	}

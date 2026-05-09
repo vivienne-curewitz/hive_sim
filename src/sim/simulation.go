@@ -51,10 +51,11 @@ func (s *Simulation) Init() {
 	s.WorkerAnts = make([]ant.WorkerAnt, 10000)
 	cx := float64(s.World.Length() / 2)
 	cy := float64(s.World.Height() / 2)
+	home := utils.NewCoordinate(cx, cy)
 	for i := range 10000 {
 		cx := rand.Float64()*10 - 5 + cx
 		cy := rand.Float64()*10 - 5 + cy
-		wa := ant.NewWorkerAnt(utils.NewCoordinate(cx, cy))
+		wa := ant.NewWorkerAnt(utils.NewCoordinate(cx, cy), home)
 		s.WorkerAnts[i] = wa
 		s.Ants[wa.ID] = &s.WorkerAnts[i]
 	}
