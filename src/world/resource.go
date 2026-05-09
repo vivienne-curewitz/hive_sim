@@ -13,6 +13,21 @@ const (
 	food
 )
 
+type FoodType int
+
+const (
+	flower FoodType = iota
+	beetle
+)
+
+var FoodTypes = []FoodType{flower, beetle}
+
+type FoodSource struct {
+	Type   FoodType
+	Amount float32
+	Pos    utils.Coordinate
+}
+
 type Resource struct {
 	location utils.Coordinate
 	id       uuid.UUID

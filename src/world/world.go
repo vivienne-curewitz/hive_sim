@@ -2,10 +2,15 @@ package world
 
 import (
 	"image/color"
+	"log"
 	"math/rand/v2"
 	"time"
 
-	"hive_sim/src/ant"
+	"hive_sim/src/pheremone"
+	"hive_sim/src/utils"
+
+	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 )
 
 type Cell int
@@ -16,21 +21,19 @@ const (
 	Flower
 )
 
-type AveragePheremone struct {
-	Mark  ant.PheremoneMark
-	Count int
-}
-
 // ALL WORLD COORDINATES ARE POSITIVE
 type World struct {
 	height               int
 	length               int
 	time                 int32
 	Cells                [][]Cell
-	Pheremones           []ant.PheremoneMark
-	AveragePheremoneCell [][]map[ant.Pheremone]AveragePheremone
+	Pheremones           []pheremone.PheremoneMark
+	AveragePheremoneCell [][]map[pheremone.Pheremone]pheremone.AveragePheremone
 	LastPheremoneIndex   int
 	FirstValidPheremone  int
+	Resources            []FoodSource
+	FoodSourceCells      [][]*FoodSource
+	Images               []*ebiten.Image
 }
 
 func NewWorld(height, length int) *World {
@@ -87,6 +90,21 @@ func (w *World) getSurroundingCount(i int, j int) (float64, float64) {
 	return dirt, grass
 }
 
+func (w *World) initImages() {
+	var err error
+	beetle_img, _, err := ebitenutil.NewImageFromFile("images/beetle.png")
+	if err != nil {
+		log.Fatal(err)
+	}
+	w.Images = make([]*ebiten.Image, 2)
+	w.Images[int(beetle)] = beetle_img
+	flower_img, _, err := ebitenutil.NewImageFromFile("images/YellowFlower.png")
+	if err != nil {
+		log.Fatal(err)
+	}
+	w.Images[int(flower)] = flower_img
+}
+
 func (w *World) Init() {
 	// initialize world state here
 	var seed uint64 = uint64(time.Now().UnixMilli())
@@ -116,14 +134,47 @@ func (w *World) Init() {
 		}
 	}
 	// init Pheremones
-	w.Pheremones = make([]ant.PheremoneMark, 1_000_000)
-	w.AveragePheremoneCell = make([][]map[ant.Pheremone]AveragePheremone, w.length)
+	w.Pheremones = make([]pheremone.PheremoneMark, 1_000_000)
+	w.AveragePheremoneCell = make([][]map[pheremone.Pheremone]pheremone.AveragePheremone, w.length)
 	for i := 0; i < w.length; i += 1 {
-		w.AveragePheremoneCell[i] = make([]map[ant.Pheremone]AveragePheremone, w.height)
+		w.AveragePheremoneCell[i] = make([]map[pheremone.Pheremone]pheremone.AveragePheremone, w.height)
 		for j := 0; j < w.height; j += 1 {
-			w.AveragePheremoneCell[i][j] = make(map[ant.Pheremone]AveragePheremone)
+			w.AveragePheremoneCell[i][j] = make(map[pheremone.Pheremone]pheremone.AveragePheremone)
 		}
 	}
+	// init Food Sources
+	w.Resources = make([]FoodSource, 100)
+	w.FoodSourceCells = make([][]*FoodSource, w.length)
+	for i := 0; i < w.length; i += 1 {
+		w.FoodSourceCells[i] = make([]*FoodSource, w.height)
+	}
+	var x, y float64
+	for i := range w.Resources {
+		if i < 4 {
+			x = rs.Float64()*20 + float64(w.length)/2 - 10
+			y = rs.Float64()*20 + float64(w.height)/2 - 10
+		} else if i <= 10 {
+			x = rs.Float64()*100 + float64(w.length)/2 - 50
+			y = rs.Float64()*100 + float64(w.height)/2 - 50
+		} else {
+			x = rs.Float64() * float64(w.length)
+			y = rs.Float64() * float64(w.height)
+		}
+		w.Resources[i] = FoodSource{
+			Pos:    utils.NewCoordinate(x, y),
+			Amount: 1000,
+			Type:   FoodTypes[rand.IntN(len(FoodTypes))],
+		}
+		cx := int(w.Resources[i].Pos.X())
+		cy := int(w.Resources[i].Pos.Y())
+		if w.FoodSourceCells[cx][cy] != nil {
+			i--
+			continue
+		}
+		w.FoodSourceCells[cx][cy] = &w.Resources[i]
+	}
+	// init images
+	w.initImages()
 }
 
 func (w *World) CullPheremones(currentTime float64) {
@@ -138,8 +189,7 @@ func (w *World) CullPheremones(currentTime float64) {
 				// shouldn't happen
 				continue
 			}
-			avgPh.Mark.Direction = (avgPh.Mark.Direction*float64(avgPh.Count) - ph.Direction) * (1.0 / float64(avgPh.Count-1)) // update average direction
-			avgPh.Count -= 1
+			avgPh.RemovePheremoneMark(ph)
 			w.AveragePheremoneCell[cx][cy][ph.Type] = avgPh
 		} else {
 			w.FirstValidPheremone = i
@@ -148,7 +198,7 @@ func (w *World) CullPheremones(currentTime float64) {
 	}
 }
 
-func (w *World) AddPheremone(ph ant.PheremoneMark) {
+func (w *World) AddPheremone(ph pheremone.PheremoneMark) {
 	w.LastPheremoneIndex = (w.LastPheremoneIndex + 1) % len(w.Pheremones)
 	w.Pheremones[w.LastPheremoneIndex] = ph
 	// add to Pheremone cell
@@ -156,17 +206,30 @@ func (w *World) AddPheremone(ph ant.PheremoneMark) {
 	cy := int(ph.Pos.Y())
 	avgPh, exists := w.AveragePheremoneCell[cx][cy][ph.Type]
 	if !exists {
-		avgPh = AveragePheremone{Mark: ph, Count: 1}
+		avgPh = pheremone.NewAveragePheremone(ph)
+	} else {
+		avgPh.AddPheremoneMark(ph)
 	}
-	avgPh.Count++
-	avgPh.Mark.Direction = avgPh.Mark.Direction*((float64(avgPh.Count)-1)/float64(avgPh.Count)) + ph.Direction*(1.0/float64(avgPh.Count)) // update average direction
 	w.AveragePheremoneCell[cx][cy][ph.Type] = avgPh
 }
 
-func (w *World) GetPheremones() []ant.PheremoneMark {
+func (w *World) GetPheremones() []pheremone.PheremoneMark {
 	if w.LastPheremoneIndex >= w.FirstValidPheremone {
 		return w.Pheremones[w.FirstValidPheremone : w.LastPheremoneIndex+1]
 	} else {
 		return append(w.Pheremones[w.FirstValidPheremone:], w.Pheremones[:w.LastPheremoneIndex+1]...)
 	}
+}
+
+func (w *World) GetAveragePheremones(pos utils.Coordinate) map[pheremone.Pheremone]pheremone.AveragePheremone {
+	i := int(pos.X())
+	j := int(pos.Y())
+	return w.AveragePheremoneCell[i][j]
+}
+
+func (w *World) GetNearbyResource(pos utils.Coordinate) *FoodSource {
+	i := int(pos.X())
+	j := int(pos.Y())
+	nearbyResources := w.FoodSourceCells[i][j]
+	return nearbyResources
 }

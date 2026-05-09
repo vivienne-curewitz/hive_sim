@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"hive_sim/src/ant"
+	"hive_sim/src/pheremone"
 	"hive_sim/src/utils"
 	"hive_sim/src/world"
 
@@ -28,7 +29,7 @@ type Simulation struct {
 	Resources  map[uuid.UUID]*world.Resource
 	World      *world.World
 
-	Pheremones []ant.PheremoneMark
+	Pheremones []pheremone.PheremoneMark
 	// bench mark stuff
 	StepCount        int
 	StepTimeSum      int
@@ -60,18 +61,20 @@ func (s *Simulation) Init() {
 }
 
 func (s *Simulation) SingleStep() {
+	// hack
+	home := utils.NewCoordinate(float64(s.World.Length()/2), float64(s.World.Height()/2))
 	// start go routines
 	startTime := time.Now().UnixMicro()
+	processors := runtime.NumCPU()
+	wg := sync.WaitGroup{}
 	if true {
-		processors := runtime.NumCPU()
-		wg := sync.WaitGroup{}
 		wg.Add(processors)
 		for pi := range processors {
 			go func() {
 				startInd := len(s.WorkerAnts) / processors * pi
 				for startInd < len(s.WorkerAnts)/processors*(pi+1) {
 					ant := &s.WorkerAnts[startInd]
-					ant.Step(s.TimeStep)
+					ant.Step(s.TimeStep, s.World)
 					startInd++
 				}
 				wg.Done()
@@ -93,6 +96,10 @@ func (s *Simulation) SingleStep() {
 		s.StepTimeSum = 0
 	}
 	// then, phase 2 -- interactions with other -- attack other ant, take resource, etc
+	for i := range len(s.WorkerAnts) {
+		ant := &s.WorkerAnts[i]
+		ant.ChooseAction(s.World, home)
+	}
 	// pheremones first
 	phStartTime := time.Now().UnixMicro()
 	s.World.CullPheremones(s.CurrentTime)

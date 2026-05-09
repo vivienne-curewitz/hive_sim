@@ -7,6 +7,7 @@ import (
 
 	"hive_sim/src/ant"
 	"hive_sim/src/camera"
+	ph "hive_sim/src/pheremone"
 	"hive_sim/src/sim"
 	"hive_sim/src/world"
 
@@ -50,26 +51,26 @@ func (g *Game) Update() error {
 	return nil
 }
 
-func DrawPheremones(screen *ebiten.Image, pheremones []ant.PheremoneMark, w *world.World, cam *camera.Camera) {
+func DrawPheremones(screen *ebiten.Image, pheremones []ph.PheremoneMark, w *world.World, cam *camera.Camera) {
 	x_scale, y_scale := cam.GetScale()
 	bounds := cam.GetBounds()
-	for _, ph := range pheremones {
-		if !camera.InBounds(ph.Pos, bounds) {
+	for _, phm := range pheremones {
+		if !camera.InBounds(phm.Pos, bounds) {
 			continue
 		}
 		var pcolor color.RGBA
-		switch ph.Type {
-		case ant.PheremoneHome:
+		switch phm.Type {
+		case ph.PheremoneHome:
 			pcolor = color.RGBA{199, 25, 224, 255}
-		case ant.PheremoneFood:
+		case ph.PheremoneFood:
 			pcolor = color.RGBA{255, 255, 0, 128}
-		case ant.PheremonePath:
+		case ph.PheremonePath:
 			pcolor = color.RGBA{0, 255, 255, 128}
-		case ant.PheremoneDeath:
+		case ph.PheremoneDeath:
 			pcolor = color.RGBA{255, 0, 255, 128}
 		}
-		px := (float32(ph.Pos.X()) - float32(bounds.Min.X())) * x_scale
-		py := (float32(ph.Pos.Y()) - float32(bounds.Min.Y())) * y_scale
+		px := (float32(phm.Pos.X()) - float32(bounds.Min.X())) * x_scale
+		py := (float32(phm.Pos.Y()) - float32(bounds.Min.Y())) * y_scale
 		vector.FillCircle(screen, px, py, 1, pcolor, false)
 	}
 }
@@ -85,6 +86,25 @@ func DrawWorld(screen *ebiten.Image, w *world.World, cam *camera.Camera) {
 			y = (float32(j) - float32(bounds.Min.Y())) * y_scale
 			vector.FillRect(screen, x, y, x_scale, y_scale, w.GetColor(i, j), false)
 		}
+	}
+
+	for _, res := range w.Resources {
+		if !camera.InBounds(res.Pos, bounds) {
+			continue
+		}
+		img := w.Images[int(res.Type)]
+		ibounds := img.Bounds()
+		dx := ibounds.Dx()
+		ixscale := 2.0 * float64(x_scale/float32(dx))
+		dy := ibounds.Dy()
+		iyscale := 2.0 * float64(y_scale/float32(dy))
+		px := (res.Pos.X() - bounds.Min.X()) * float64(x_scale)
+		py := (res.Pos.Y() - bounds.Min.Y()) * float64(y_scale)
+		op := &ebiten.DrawImageOptions{}
+		op.GeoM.Scale(ixscale, iyscale)
+		op.GeoM.Translate(px, py)
+		screen.DrawImage(img, op)
+
 	}
 }
 
