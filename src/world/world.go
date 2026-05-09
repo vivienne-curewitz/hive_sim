@@ -4,6 +4,7 @@ import (
 	"image/color"
 	"log"
 	"math/rand/v2"
+	"sync/atomic"
 	"time"
 
 	"hive_sim/src/pheremone"
@@ -135,10 +136,10 @@ func (w *World) Init() {
 	}
 	// init Pheremones
 	w.Pheremones = make([]pheremone.PheremoneMark, 1_000_000)
-	w.AveragePheremoneCell = make([][]map[pheremone.Pheremone]pheremone.AveragePheremone, w.length)
-	for i := 0; i < w.length; i += 1 {
-		w.AveragePheremoneCell[i] = make([]map[pheremone.Pheremone]pheremone.AveragePheremone, w.height)
-		for j := 0; j < w.height; j += 1 {
+	w.AveragePheremoneCell = make([][]map[pheremone.Pheremone]pheremone.AveragePheremone, 10*w.length)
+	for i := 0; i < w.length*10; i += 1 {
+		w.AveragePheremoneCell[i] = make([]map[pheremone.Pheremone]pheremone.AveragePheremone, 10*w.height)
+		for j := 0; j < w.height*10; j += 1 {
 			w.AveragePheremoneCell[i][j] = make(map[pheremone.Pheremone]pheremone.AveragePheremone)
 		}
 	}
@@ -162,7 +163,7 @@ func (w *World) Init() {
 		}
 		w.Resources[i] = FoodSource{
 			Pos:    utils.NewCoordinate(x, y),
-			Amount: 1000,
+			Amount: atomic.Int32{},
 			Type:   FoodTypes[rand.IntN(len(FoodTypes))],
 			Radius: 0.2,
 		}
@@ -172,10 +173,17 @@ func (w *World) Init() {
 			i--
 			continue
 		}
+		w.Resources[i].Amount.Store(100)
 		w.FoodSourceCells[cx][cy] = &w.Resources[i]
 	}
 	// init images
 	w.initImages()
+}
+
+func (w *World) findAvgPheremone(pos utils.Coordinate) map[pheremone.Pheremone]pheremone.AveragePheremone {
+	cx := int(pos.X() * 10)
+	cy := int(pos.Y() * 10)
+	return w.AveragePheremoneCell[cx][cy]
 }
 
 func (w *World) CullPheremones(currentTime float64) {
@@ -183,15 +191,14 @@ func (w *World) CullPheremones(currentTime float64) {
 	for i := w.FirstValidPheremone; i != w.LastPheremoneIndex; i = (i + 1) % len(w.Pheremones) {
 		if w.Pheremones[i].Expiration < currentTime {
 			ph := w.Pheremones[i]
-			cx := int(ph.Pos.X())
-			cy := int(ph.Pos.Y())
-			avgPh, exists := w.AveragePheremoneCell[cx][cy][ph.Type]
+			mp := w.findAvgPheremone(ph.Pos)
+			avgPh, exists := mp[ph.Type]
 			if !exists {
 				// shouldn't happen
 				continue
 			}
 			avgPh.RemovePheremoneMark(ph)
-			w.AveragePheremoneCell[cx][cy][ph.Type] = avgPh
+			mp[ph.Type] = avgPh
 		} else {
 			w.FirstValidPheremone = i
 			break
@@ -203,15 +210,14 @@ func (w *World) AddPheremone(ph pheremone.PheremoneMark) {
 	w.LastPheremoneIndex = (w.LastPheremoneIndex + 1) % len(w.Pheremones)
 	w.Pheremones[w.LastPheremoneIndex] = ph
 	// add to Pheremone cell
-	cx := int(ph.Pos.X())
-	cy := int(ph.Pos.Y())
-	avgPh, exists := w.AveragePheremoneCell[cx][cy][ph.Type]
+	mp := w.findAvgPheremone(ph.Pos)
+	avgPh, exists := mp[ph.Type]
 	if !exists {
 		avgPh = pheremone.NewAveragePheremone(ph)
 	} else {
 		avgPh.AddPheremoneMark(ph)
 	}
-	w.AveragePheremoneCell[cx][cy][ph.Type] = avgPh
+	mp[ph.Type] = avgPh
 }
 
 func (w *World) GetPheremones() []pheremone.PheremoneMark {
@@ -223,9 +229,7 @@ func (w *World) GetPheremones() []pheremone.PheremoneMark {
 }
 
 func (w *World) GetAveragePheremones(pos utils.Coordinate) map[pheremone.Pheremone]pheremone.AveragePheremone {
-	i := int(pos.X())
-	j := int(pos.Y())
-	return w.AveragePheremoneCell[i][j]
+	return w.findAvgPheremone(pos)
 }
 
 func (w *World) GetNearbyResource(pos utils.Coordinate) *FoodSource {

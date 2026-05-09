@@ -191,6 +191,7 @@ func (wa *WorkerAnt) ChooseAction(w *world.World, home utils.Coordinate) {
 			// found food!!
 			wa.CurrentAction = DeliverFood
 			wa.Direction = math.Mod(wa.Direction+math.Pi, 2*math.Pi) // turn around to go back to home
+			res.TakeX(5)
 			wa.LastKnownLandmark = Landmark{
 				Position: res.Pos,
 				Type:     pheremone.PheremoneFood,

@@ -116,7 +116,16 @@ func (s *Simulation) SingleStep() {
 		s.PheremoneTimeSum = 0
 	}
 	// phase 3 -- resolution
-
+	// remove depleted food sources
+	for fi := 0; fi < len(s.World.Resources); fi += 1 {
+		food := &s.World.Resources[fi]
+		if food.Amount.Load() <= 0 {
+			log.Printf("Food source %d depleted\n", fi)
+			// remove from world
+			s.World.Resources = append(s.World.Resources[:fi], s.World.Resources[fi+1:]...)
+			s.World.FoodSourceCells[int(food.Pos.X())][int(food.Pos.Y())] = nil
+		}
+	}
 	// update simulation
 	s.CurrentTime += s.TimeStep * 1000
 }

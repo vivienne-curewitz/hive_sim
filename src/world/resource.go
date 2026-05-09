@@ -1,6 +1,8 @@
 package world
 
 import (
+	"sync/atomic"
+
 	"hive_sim/src/utils"
 
 	"github.com/google/uuid"
@@ -24,9 +26,14 @@ var FoodTypes = []FoodType{flower, beetle}
 
 type FoodSource struct {
 	Type   FoodType
-	Amount float32
+	Amount atomic.Int32
 	Pos    utils.Coordinate
 	Radius float64
+}
+
+func (fs *FoodSource) TakeX(x int32) {
+	remove := -1 * x
+	fs.Amount.Add(remove)
 }
 
 type Resource struct {
