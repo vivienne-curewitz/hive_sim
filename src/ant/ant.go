@@ -24,7 +24,7 @@ type Landmark struct {
 
 const (
 	PheremoneFrequency float64 = 0.05      // chance to drop per second
-	PheremoneLifetime  float64 = 300_000.0 // 5 minutes in ms
+	PheremoneLifetime  float64 = 180_000.0 // 5 minutes in ms
 )
 
 type Action int
@@ -112,16 +112,18 @@ func (wa *WorkerAnt) SprayPheremone(currentTime float64) pheremone.PheremoneMark
 	return ph
 }
 
+// add +- ent radians to the direction
+func (wa *WorkerAnt) DirectionEntropy(ent float64) {
+	deltaTheta := rand.Float64()*2*ent - ent // small random change in direction
+	wa.Direction += deltaTheta
+	wa.Direction = math.Mod(wa.Direction, 2*math.Pi)
+}
+
 func (wa *WorkerAnt) Move(timeStepMs float64) {
 	dx := math.Cos(wa.Direction) * wa.Speed * timeStepMs
 	dy := math.Sin(wa.Direction) * wa.Speed * timeStepMs
 	wa.Pos.Add(dx, dy)
-	deltaTheta := rand.Float64()*0.4 - 0.2 // small random change in direction
-	wa.Direction += deltaTheta
-	wa.Direction = math.Mod(wa.Direction, 2*math.Pi)
-	if wa.Direction < 0 {
-		wa.Direction += 2 * math.Pi
-	}
+	wa.DirectionEntropy(0.2)
 }
 
 // just a stub - Eat, Drink, Rest all need backbone later
@@ -179,16 +181,13 @@ func (wa *WorkerAnt) ChooseAction(w *world.World, home utils.Coordinate) {
 			hph, hexists := w.GetAveragePheremones(wa.Pos)[pheremone.PheremoneHome]
 			if hexists {
 				wa.Direction = hph.AverageDirection()
-				//wa.Direction += rand.Float64() * 2 * math.Pi
-				//if wa.Direction < 0.0 {
-				//	wa.Direction += 2 * math.Pi
-				//}
+				wa.DirectionEntropy(0.02)
 			}
 
 		}
 	} else if wa.CurrentAction == RetrieveFood {
 		res := w.GetNearbyResource(wa.Pos)
-		if res != nil {
+		if res != nil && wa.Pos.DistanceTo(res.Pos) < res.Radius {
 			// found food!!
 			wa.CurrentAction = DeliverFood
 			wa.Direction = math.Mod(wa.Direction+math.Pi, 2*math.Pi) // turn around to go back to home
@@ -201,10 +200,8 @@ func (wa *WorkerAnt) ChooseAction(w *world.World, home utils.Coordinate) {
 			fph, exists := w.GetAveragePheremones(wa.Pos)[pheremone.PheremoneFood]
 			if exists {
 				wa.Direction = fph.AverageDirection()
-				//wa.Direction += rand.Float64() * 2 * math.Pi
-				//if wa.Direction < 0.0 {
-				//	wa.Direction += 2 * math.Pi
-				//}
+				wa.DirectionEntropy(0.02)
+
 			}
 		}
 	}

@@ -108,11 +108,11 @@ func DrawWorld(screen *ebiten.Image, w *world.World, cam *camera.Camera) {
 		img := w.Images[int(res.Type)]
 		ibounds := img.Bounds()
 		dx := ibounds.Dx()
-		ixscale := 2.0 * float64(x_scale/float32(dx))
+		ixscale := float64(x_scale / float32(dx))
 		dy := ibounds.Dy()
-		iyscale := 2.0 * float64(y_scale/float32(dy))
-		px := (res.Pos.X() - bounds.Min.X()) * float64(x_scale)
-		py := (res.Pos.Y() - bounds.Min.Y()) * float64(y_scale)
+		iyscale := float64(y_scale / float32(dy))
+		px := (res.Pos.X() - bounds.Min.X() - 0.5) * float64(x_scale)
+		py := (res.Pos.Y() - bounds.Min.Y() - 0.5) * float64(y_scale)
 		op := &ebiten.DrawImageOptions{}
 		op.GeoM.Scale(ixscale, iyscale)
 		op.GeoM.Translate(px, py)
@@ -153,17 +153,17 @@ func (g *Game) Draw(screen *ebiten.Image) {
 }
 
 func (g *Game) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHeight int) {
-	return 1000, 1000
+	return outsideWidth, outsideHeight
 }
 
 func main() {
 	tps := 60
 	hive_sim := sim.NewSimulation(1.0/float64(tps), 100)
 	hive_sim.Init()
-	cam := camera.NewCamera(hive_sim.World, nil, 1.0)
+	cam := camera.NewCamera(hive_sim.World, nil, 2.0)
 	game := Game{HiveSim: hive_sim, frametime: 1.0 / float64(tps), Camera: &cam}
 
-	ebiten.SetWindowSize(1000, 1000)
+	ebiten.SetWindowSize(2000, int(2000.0*9.0/16.0))
 	ebiten.SetWindowTitle("Hello, World!")
 	ebiten.SetTPS(tps) // 60 FPS
 	// go CameraControl(&cam)

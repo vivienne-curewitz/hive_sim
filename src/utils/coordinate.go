@@ -29,3 +29,7 @@ func (ca Coordinate) AngleTo(other Coordinate) float64 {
 	over := other.x - ca.x
 	return math.Atan2(rise, over)
 }
+
+func (ca Coordinate) DistanceTo(other Coordinate) float64 {
+	return math.Hypot(ca.x-other.x, ca.y-other.y)
+}

@@ -26,6 +26,7 @@ type FoodSource struct {
 	Type   FoodType
 	Amount float32
 	Pos    utils.Coordinate
+	Radius float64
 }
 
 type Resource struct {

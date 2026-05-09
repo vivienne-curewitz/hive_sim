@@ -164,6 +164,7 @@ func (w *World) Init() {
 			Pos:    utils.NewCoordinate(x, y),
 			Amount: 1000,
 			Type:   FoodTypes[rand.IntN(len(FoodTypes))],
+			Radius: 0.2,
 		}
 		cx := int(w.Resources[i].Pos.X())
 		cy := int(w.Resources[i].Pos.Y())
