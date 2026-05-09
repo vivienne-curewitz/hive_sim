@@ -4,6 +4,7 @@ import (
 	"image/color"
 	"log"
 	"math"
+	"runtime"
 
 	"hive_sim/src/ant"
 	"hive_sim/src/camera"
@@ -52,26 +53,38 @@ func (g *Game) Update() error {
 }
 
 func DrawPheremones(screen *ebiten.Image, pheremones []ph.PheremoneMark, w *world.World, cam *camera.Camera) {
+	cpus := runtime.NumCPU()
 	x_scale, y_scale := cam.GetScale()
 	bounds := cam.GetBounds()
-	for _, phm := range pheremones {
-		if !camera.InBounds(phm.Pos, bounds) {
-			continue
-		}
-		var pcolor color.RGBA
-		switch phm.Type {
-		case ph.PheremoneHome:
-			pcolor = color.RGBA{199, 25, 224, 255}
-		case ph.PheremoneFood:
-			pcolor = color.RGBA{255, 255, 0, 128}
-		case ph.PheremonePath:
-			pcolor = color.RGBA{0, 255, 255, 128}
-		case ph.PheremoneDeath:
-			pcolor = color.RGBA{255, 0, 255, 128}
-		}
-		px := (float32(phm.Pos.X()) - float32(bounds.Min.X())) * x_scale
-		py := (float32(phm.Pos.Y()) - float32(bounds.Min.Y())) * y_scale
-		vector.FillCircle(screen, px, py, 1, pcolor, false)
+	for cpuI := range cpus {
+		// multithreading here causes the bad bad
+		func() {
+			start := cpuI * (len(pheremones)/cpus + 1)
+			end := (cpuI + 1) * (len(pheremones)/cpus + 1)
+			if end > len(pheremones) {
+				end = len(pheremones)
+			}
+			for phi := start; phi < end; phi += 1 {
+				phm := pheremones[phi]
+				if !camera.InBounds(phm.Pos, bounds) {
+					continue
+				}
+				var pcolor color.RGBA
+				switch phm.Type {
+				case ph.PheremoneHome:
+					pcolor = color.RGBA{199, 25, 224, 255}
+				case ph.PheremoneFood:
+					pcolor = color.RGBA{255, 255, 0, 128}
+				case ph.PheremonePath:
+					pcolor = color.RGBA{0, 255, 255, 128}
+				case ph.PheremoneDeath:
+					pcolor = color.RGBA{255, 0, 255, 128}
+				}
+				px := (float32(phm.Pos.X()) - float32(bounds.Min.X())) * x_scale
+				py := (float32(phm.Pos.Y()) - float32(bounds.Min.Y())) * y_scale
+				vector.FillCircle(screen, px, py, 1, pcolor, false)
+			}
+		}()
 	}
 }
 
