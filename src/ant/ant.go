@@ -21,7 +21,7 @@ type Landmark struct {
 }
 
 const (
-	PheremoneFrequency float64 = 0.01      // chance to drop per second
+	PheremoneFrequency float64 = 0.05      // chance to drop per second
 	PheremoneLifetime  float64 = 300_000.0 // 5 minutes in ms
 )
 

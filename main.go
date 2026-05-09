@@ -3,6 +3,7 @@ package main
 import (
 	"image/color"
 	"log"
+	"math"
 
 	"hive_sim/src/ant"
 	"hive_sim/src/camera"
@@ -67,8 +68,8 @@ func DrawPheremones(screen *ebiten.Image, pheremones []ant.PheremoneMark, w *wor
 		case ant.PheremoneDeath:
 			pcolor = color.RGBA{255, 0, 255, 128}
 		}
-		px := (float32(ph.Pos.X()) - float32(bounds.Min.X)) * x_scale
-		py := (float32(ph.Pos.Y()) - float32(bounds.Min.Y)) * y_scale
+		px := (float32(ph.Pos.X()) - float32(bounds.Min.X())) * x_scale
+		py := (float32(ph.Pos.Y()) - float32(bounds.Min.Y())) * y_scale
 		vector.FillCircle(screen, px, py, 1, pcolor, false)
 	}
 }
@@ -78,10 +79,10 @@ func DrawWorld(screen *ebiten.Image, w *world.World, cam *camera.Camera) {
 	bounds := cam.GetBounds()
 	var x, y float32 = 0, 0
 	// first rectangle at 0,0 (top left, top right??)
-	for i := bounds.Min.X; i < bounds.Max.X; i += 1 {
-		for j := bounds.Min.Y; j < bounds.Max.Y; j += 1 {
-			x = (float32(i) - float32(bounds.Min.X)) * x_scale
-			y = (float32(j) - float32(bounds.Min.Y)) * y_scale
+	for i := int(math.Max(float64(bounds.Min.X()), 0)); i < int(math.Min(float64(bounds.Max.X()), float64(w.Length()))); i += 1 {
+		for j := int(math.Max(float64(bounds.Min.Y()), 0)); j < int(math.Min(float64(bounds.Max.Y()), float64(w.Height()))); j += 1 {
+			x = (float32(i) - float32(bounds.Min.X())) * x_scale
+			y = (float32(j) - float32(bounds.Min.Y())) * y_scale
 			vector.FillRect(screen, x, y, x_scale, y_scale, w.GetColor(i, j), false)
 		}
 	}
@@ -101,8 +102,8 @@ func DrawAnts(screen *ebiten.Image, ants []ant.WorkerAnt, w *world.World, cam *c
 		default:
 			acolor = color.RGBA{255, 255, 255, 255}
 		}
-		px := (float32(ant.Pos.X()) - float32(bounds.Min.X)) * x_scale
-		py := (float32(ant.Pos.Y()) - float32(bounds.Min.Y)) * y_scale
+		px := (float32(ant.Pos.X()) - float32(bounds.Min.X())) * x_scale
+		py := (float32(ant.Pos.Y()) - float32(bounds.Min.Y())) * y_scale
 		vector.FillRect(screen, px, py, 1, 1, acolor, false)
 	}
 }
