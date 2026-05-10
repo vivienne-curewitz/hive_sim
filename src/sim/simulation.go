@@ -33,7 +33,9 @@ type Simulation struct {
 	// bench mark stuff
 	StepCount        int
 	StepTimeSum      int
+	ActionTimeSum    int
 	PheremoneTimeSum int
+	ResolveTimeSum   int
 }
 
 func NewSimulation(timeStep, duration float64) *Simulation {
@@ -73,7 +75,11 @@ func (s *Simulation) SingleStep() {
 		for pi := range processors {
 			go func() {
 				startInd := len(s.WorkerAnts) / processors * pi
-				for startInd < len(s.WorkerAnts)/processors*(pi+1) {
+				end := len(s.WorkerAnts) / processors * (pi + 1)
+				if end > len(s.WorkerAnts) {
+					end = len(s.WorkerAnts)
+				}
+				for startInd < end {
 					ant := &s.WorkerAnts[startInd]
 					ant.Step(s.TimeStep, s.World)
 					startInd++
@@ -90,27 +96,28 @@ func (s *Simulation) SingleStep() {
 			ant.Move(s.TimeStep)
 		}
 	}
-	s.StepCount++
 	s.StepTimeSum += int(time.Now().UnixMicro() - startTime)
-	if s.StepCount%60 == 0 {
-		log.Printf("Phase 1 average %d microseconds\n", s.StepTimeSum/60)
-		s.StepTimeSum = 0
-	}
+
 	// then, phase 2 -- interactions with other -- attack other ant, take resource, etc
+	actionStartTime := time.Now().UnixMicro()
 	for j := range processors {
-		wg.Add(processors)
-		go func() {
-			startInd := len(s.WorkerAnts) / processors * j
-			end := len(s.WorkerAnts) / processors * (j + 1)
+		wg.Add(1)
+		go func(pIndex int) {
+			startInd := len(s.WorkerAnts) / processors * pIndex
+			end := len(s.WorkerAnts) / processors * (pIndex + 1)
 			if end > len(s.WorkerAnts) {
 				end = len(s.WorkerAnts)
 			}
-			for i := startInd; i < end; i+= 1 {
-				ant := &s.WorkerAnts[]
+			for i := startInd; i < end; i += 1 {
+				ant := &s.WorkerAnts[i]
 				ant.ChooseAction(s.World, home)
 			}
-		}()
+			wg.Done()
+		}(j)
 	}
+	wg.Wait()
+	s.ActionTimeSum += int(time.Now().UnixMicro() - actionStartTime)
+
 	// pheremones first
 	phStartTime := time.Now().UnixMicro()
 	s.World.CullPheremones(s.CurrentTime)
@@ -121,11 +128,9 @@ func (s *Simulation) SingleStep() {
 		s.World.AddPheremone(ph)
 	}
 	s.PheremoneTimeSum += int(time.Now().UnixMicro() - phStartTime)
-	if s.StepCount%60 == 0 {
-		log.Printf("Pheremone spraying average %d microseconds\n", s.PheremoneTimeSum/60)
-		s.PheremoneTimeSum = 0
-	}
+
 	// phase 3 -- resolution
+	resolveStartTime := time.Now().UnixMicro()
 	// remove depleted food sources
 	for fi := 0; fi < len(s.World.Resources); fi += 1 {
 		food := &s.World.Resources[fi]
@@ -136,6 +141,18 @@ func (s *Simulation) SingleStep() {
 			s.World.FoodSourceCells[int(food.Pos.X())][int(food.Pos.Y())] = nil
 		}
 	}
+	s.ResolveTimeSum += int(time.Now().UnixMicro() - resolveStartTime)
+
+	s.StepCount++
+	if s.StepCount%60 == 0 {
+		log.Printf("Averages (µs) | Ph1: %d | Ph2: %d | Pher: %d | Res: %d | Total: %d\n",
+			s.StepTimeSum/60, s.ActionTimeSum/60, s.PheremoneTimeSum/60, s.ResolveTimeSum/60, (s.StepTimeSum+s.ActionTimeSum+s.PheremoneTimeSum+s.ResolveTimeSum)/60)
+		s.StepTimeSum = 0
+		s.ActionTimeSum = 0
+		s.PheremoneTimeSum = 0
+		s.ResolveTimeSum = 0
+	}
+
 	// update simulation
 	s.CurrentTime += s.TimeStep * 1000
 }
