@@ -167,9 +167,9 @@ func (w *World) Init() {
 		w.Resources[i] = FoodSource{
 			Pos:       utils.NewCoordinate(x, y),
 			Amount:    atomic.Int32{},
-			MaxAmount: 1000,
+			MaxAmount: 100_000,
 			Type:      FoodTypes[rand.IntN(len(FoodTypes))],
-			Radius:    0.4,
+			Radius:    0.2,
 		}
 		cx := int(w.Resources[i].Pos.X())
 		cy := int(w.Resources[i].Pos.Y())
@@ -177,7 +177,7 @@ func (w *World) Init() {
 			i--
 			continue
 		}
-		w.Resources[i].Amount.Store(1000)
+		w.Resources[i].Amount.Store(w.Resources[i].MaxAmount)
 		w.FoodSourceCells[cx][cy] = &w.Resources[i]
 	}
 	// init images
@@ -255,7 +255,7 @@ func (w *World) GetPheremoneDirection(pos utils.Coordinate, phType pheremone.Phe
 	var sumX float64 = 0
 	var sumY float64 = 0
 	var real bool = false
-	viewDistance := 5.0
+	viewDistance := 25.0
 	const step float64 = 1.0 / pheremoneIndexPerCell
 	for i := pos.X() - viewDistance*step; i < pos.X()+viewDistance*step; i += pheremoneIndexPerCell {
 		for j := pos.Y() - viewDistance*step; j < pos.Y()+viewDistance*step; j += pheremoneIndexPerCell {
@@ -265,8 +265,8 @@ func (w *World) GetPheremoneDirection(pos utils.Coordinate, phType pheremone.Phe
 				real = true
 				loc := utils.NewCoordinate(i, j)
 				dir := pos.AngleTo(loc)
-				sumX += math.Cos(dir) * avgPh.Strength()
-				sumY += math.Sin(dir) * avgPh.Strength()
+				sumX += math.Cos(dir) * math.Pow(avgPh.Strength(), 2)
+				sumY += math.Sin(dir) * math.Pow(avgPh.Strength(), 2)
 			}
 		}
 	}

@@ -1,6 +1,9 @@
 package utils
 
-import "math"
+import (
+	"math"
+	"math/rand/v2"
+)
 
 type Coordinate struct {
 	x float64
@@ -9,6 +12,13 @@ type Coordinate struct {
 
 func NewCoordinate(x float64, y float64) Coordinate {
 	return Coordinate{x: x, y: y}
+}
+
+func RandomCoordinate(maxX float64, maxY float64) Coordinate {
+	return Coordinate{
+		x: rand.Float64() * maxX,
+		y: rand.Float64() * maxY,
+	}
 }
 
 func (ca Coordinate) X() float64 {

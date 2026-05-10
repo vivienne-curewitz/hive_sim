@@ -159,8 +159,10 @@ func (s *Simulation) SingleStep() {
 		if food.Amount.Load() <= 0 {
 			log.Printf("Food source %d depleted\n", fi)
 			// remove from world
-			s.World.Resources = append(s.World.Resources[:fi], s.World.Resources[fi+1:]...)
 			s.World.FoodSourceCells[int(food.Pos.X())][int(food.Pos.Y())] = nil
+			food.Pos = utils.RandomCoordinate(float64(s.World.Length()), float64(s.World.Height()))
+			s.World.FoodSourceCells[int(food.Pos.X())][int(food.Pos.Y())] = food
+			food.Amount.Store(food.MaxAmount)
 		}
 	}
 	s.ResolveTimeSum += int(time.Now().UnixMicro() - resolveStartTime)

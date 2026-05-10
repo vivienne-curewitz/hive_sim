@@ -65,7 +65,7 @@ func NewWorkerAnt(pos utils.Coordinate, home utils.Coordinate) WorkerAnt {
 		hunger:            0.0,
 		tiredness:         0.0,
 		hitpoints:         100.0,
-		Speed:             0.5,
+		Speed:             0.1,
 		Direction:         rand.Float64() * 2 * math.Pi,
 		LastKnownLandmark: getHomeLandmark(home),
 		Exhausted:         false,
@@ -118,7 +118,7 @@ func (wa *WorkerAnt) Move(timeStepMs float64) {
 	dx := math.Cos(wa.Direction) * wa.Speed * timeStepMs
 	dy := math.Sin(wa.Direction) * wa.Speed * timeStepMs
 	wa.Pos.Add(dx, dy)
-	wa.DirectionEntropy(0.2)
+	wa.DirectionEntropy(0.02)
 }
 
 // just a stub - Eat, Drink, Rest all need backbone later
@@ -152,22 +152,19 @@ func (wa *WorkerAnt) ChooseAction(w *world.World, home utils.Coordinate) {
 		if res != nil && wa.Pos.DistanceTo(res.Pos) < res.Radius {
 			wa.foundFood(res, home)
 			return
-			// not worried about getting tired rn, since no rest mechanic exists
-			//	} else if wa.Exhausted {
-			//		wa.CurrentAction = ActionRest
-			//		homeDir, realDir := w.GetPheremoneDirection(wa.Pos, pheremone.PheremoneHome)
-			//		if realDir {
-			//			wa.Direction = homeDir
-			//		}
 		} else if res != nil {
 			wa.CurrentAction = FindFood
+			return
 		} else {
 			foodDirection, realDirection := w.GetPheremoneDirection(wa.Pos, pheremone.PheremoneFood)
 			if realDirection {
 				wa.CurrentAction = FindFood
 				wa.Direction = foodDirection
+				return
 			}
 		}
+		wa.DirectionEntropy(0.2)
+		return
 	} else if wa.CurrentAction == RetrieveFood {
 		delta := wa.Pos.DistanceTo(home)
 		if delta < 1.0 {
@@ -178,18 +175,20 @@ func (wa *WorkerAnt) ChooseAction(w *world.World, home utils.Coordinate) {
 				Type:     pheremone.PheremoneHome,
 			}
 			wa.Direction = rand.Float64() * 2 * math.Pi
+			return
 		} else {
 			// orient again
 			if wa.Pos.DistanceTo(home) < 10.0 { // the ant can just see home
 				wa.Direction = wa.Pos.AngleTo(home)
-				wa.DirectionEntropy(0.02)
+				wa.DirectionEntropy(0.002)
 				return
 			} else {
 				homeDir, hexists := w.GetPheremoneDirection(wa.Pos, pheremone.PheremoneHome)
 				if hexists {
 					wa.Direction = homeDir
-					wa.DirectionEntropy(0.02)
+					wa.DirectionEntropy(0.002)
 				}
+				return
 			}
 		}
 	} else if wa.CurrentAction == FindFood {
@@ -197,16 +196,21 @@ func (wa *WorkerAnt) ChooseAction(w *world.World, home utils.Coordinate) {
 		if res != nil && wa.Pos.DistanceTo(res.Pos) < res.Radius {
 			// found food!!
 			wa.foundFood(res, home)
+			return
 		} else if res != nil {
 			wa.Direction = wa.Pos.AngleTo(res.Pos)
+			return
 		} else {
 			// reorient
 			fph, exists := w.GetPheremoneDirection(wa.Pos, pheremone.PheremoneFood)
 			if exists {
 				wa.Direction = fph
-				wa.DirectionEntropy(0.02)
+				wa.DirectionEntropy(0.002)
 
+			} else {
+				wa.CurrentAction = Wander
 			}
+			return
 		}
 	}
 }

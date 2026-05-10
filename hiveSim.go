@@ -173,19 +173,21 @@ func DrawAnts(screen *ebiten.Image, ants []ant.WorkerAnt, w *world.World, cam *c
 			if end > len(ants) {
 				end = len(ants)
 			}
-			for ai, ant := range ants[start:end] {
-				if !camera.InBounds(ant.Pos, bounds) {
+			for ai, sant := range ants[start:end] {
+				if !camera.InBounds(sant.Pos, bounds) {
 					continue
 				}
 				var acolor color.RGBA
-				switch {
-				case ant.Exhausted:
+				switch sant.CurrentAction {
+				case ant.FindFood:
 					acolor = color.RGBA{255, 0, 0, 255}
+				case ant.RetrieveFood:
+					acolor = color.RGBA{0o0, 0o0, 0o0, 255}
 				default:
 					acolor = color.RGBA{255, 255, 255, 255}
 				}
-				px := (float32(ant.Pos.X()) - float32(bounds.Min.X())) * x_scale
-				py := (float32(ant.Pos.Y()) - float32(bounds.Min.Y())) * y_scale
+				px := (float32(sant.Pos.X()) - float32(bounds.Min.X())) * x_scale
+				py := (float32(sant.Pos.Y()) - float32(bounds.Min.Y())) * y_scale
 				antDrawInfos[ai+start] = PhDrawInfo{PColor: acolor, X: px, Y: py}
 			}
 			wg.Done()
@@ -193,7 +195,7 @@ func DrawAnts(screen *ebiten.Image, ants []ant.WorkerAnt, w *world.World, cam *c
 	}
 	wg.Wait()
 	for _, adi := range antDrawInfos {
-		vector.FillRect(screen, adi.X, adi.Y, 1, 1, adi.PColor, false)
+		vector.FillRect(screen, adi.X, adi.Y, 2, 2, adi.PColor, false)
 	}
 }
 
