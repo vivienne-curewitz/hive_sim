@@ -25,10 +25,11 @@ const (
 var FoodTypes = []FoodType{flower, beetle}
 
 type FoodSource struct {
-	Type   FoodType
-	Amount atomic.Int32
-	Pos    utils.Coordinate
-	Radius float64
+	Type      FoodType
+	Amount    atomic.Int32
+	MaxAmount int32
+	Pos       utils.Coordinate
+	Radius    float64
 }
 
 func (fs *FoodSource) TakeX(x int32) {

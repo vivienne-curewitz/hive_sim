@@ -165,10 +165,11 @@ func (w *World) Init() {
 			y = rs.Float64() * float64(w.height)
 		}
 		w.Resources[i] = FoodSource{
-			Pos:    utils.NewCoordinate(x, y),
-			Amount: atomic.Int32{},
-			Type:   FoodTypes[rand.IntN(len(FoodTypes))],
-			Radius: 0.4,
+			Pos:       utils.NewCoordinate(x, y),
+			Amount:    atomic.Int32{},
+			MaxAmount: 1000,
+			Type:      FoodTypes[rand.IntN(len(FoodTypes))],
+			Radius:    0.4,
 		}
 		cx := int(w.Resources[i].Pos.X())
 		cy := int(w.Resources[i].Pos.Y())

@@ -159,6 +159,8 @@ func (wa *WorkerAnt) ChooseAction(w *world.World, home utils.Coordinate) {
 			//		if realDir {
 			//			wa.Direction = homeDir
 			//		}
+		} else if res != nil {
+			wa.CurrentAction = FindFood
 		} else {
 			foodDirection, realDirection := w.GetPheremoneDirection(wa.Pos, pheremone.PheremoneFood)
 			if realDirection {

@@ -103,9 +103,11 @@ func DrawPheremones(screen *ebiten.Image, w *world.World, cam *camera.Camera) {
 				case ph.PheremoneDeath:
 					pcolor = color.RGBA{255, 0, 255, 128}
 				}
-
+				offset := float32(phType)
+				px += (offset * x_scale / 3)
+				py += (offset * y_scale / 3)
 				// Scale radius by strength (clamped for visibility)
-				radius := float32(math.Max(0.5, math.Min(3.0, strength*2.0)))
+				radius := float32(math.Max(1.0, math.Min(4.0, 3*strength*2.0)))
 				vector.FillCircle(screen, px, py, radius, pcolor, false)
 			}
 		}
@@ -141,6 +143,21 @@ func DrawWorld(screen *ebiten.Image, w *world.World, cam *camera.Camera) {
 		op.GeoM.Scale(ixscale, iyscale)
 		op.GeoM.Translate(px, py)
 		screen.DrawImage(img, op)
+
+		// Draw health bar
+		barWidth := float32(x_scale)
+		barHeight := float32(y_scale * 0.1)
+		barX := float32(px)
+		barY := float32(py) + float32(y_scale)
+
+		// Background
+		vector.FillRect(screen, barX, barY, barWidth, barHeight, color.RGBA{50, 50, 50, 255}, false)
+
+		// Foreground
+		percent := float32(res.Amount.Load()) / float32(res.MaxAmount)
+		if percent > 0 {
+			vector.FillRect(screen, barX, barY, barWidth*percent, barHeight, color.RGBA{0, 255, 0, 255}, false)
+		}
 
 	}
 }
