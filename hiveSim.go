@@ -103,9 +103,6 @@ func DrawPheremones(screen *ebiten.Image, w *world.World, cam *camera.Camera) {
 				case ph.PheremoneDeath:
 					pcolor = color.RGBA{255, 0, 255, 128}
 				}
-				offset := float32(phType)
-				px += (offset * x_scale / 3)
-				py += (offset * y_scale / 3)
 				// Scale radius by strength (clamped for visibility)
 				radius := float32(math.Max(1.0, math.Min(4.0, 3*strength*2.0)))
 				vector.FillCircle(screen, px, py, radius, pcolor, false)
