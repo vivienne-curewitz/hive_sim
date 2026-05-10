@@ -59,28 +59,41 @@ type PhDrawInfo struct {
 	Y      float32
 }
 
-func DrawPheremones(screen *ebiten.Image, pheremones []ph.PheremoneMark, w *world.World, cam *camera.Camera) {
-	cpus := runtime.NumCPU() / 2
+func DrawPheremones(screen *ebiten.Image, w *world.World, cam *camera.Camera) {
 	x_scale, y_scale := cam.GetScale()
 	bounds := cam.GetBounds()
-	drawInfos := make([]PhDrawInfo, len(pheremones))
-	wg := sync.WaitGroup{}
-	wg.Add(cpus)
-	for cpuI := range cpus {
-		// multithreading here causes the bad bad
-		go func() {
-			start := cpuI * (len(pheremones)/cpus + 1)
-			end := (cpuI + 1) * (len(pheremones)/cpus + 1)
-			if end > len(pheremones) {
-				end = len(pheremones)
+
+	const phIdx = 5 // should match pheremoneIndexPerCell in world.go
+	step := 1.0 / float64(phIdx)
+
+	// Calculate visible range in the pheremone grid
+	minI := int(math.Max(0, bounds.Min.X()*phIdx))
+	maxI := int(math.Min(float64(len(w.AveragePheremoneCell)), bounds.Max.X()*phIdx))
+	minJ := int(math.Max(0, bounds.Min.Y()*phIdx))
+	maxJ := int(math.Min(float64(len(w.AveragePheremoneCell[0])), bounds.Max.Y()*phIdx))
+
+	for i := minI; i < maxI; i++ {
+		for j := minJ; j < maxJ; j++ {
+			mp := w.AveragePheremoneCell[i][j]
+			if len(mp) == 0 {
+				continue
 			}
-			for phi := start; phi < end; phi += 1 {
-				phm := pheremones[phi]
-				if !camera.InBounds(phm.Pos, bounds) {
+
+			// Implicit coordinate of this pheremone cell
+			worldX := float64(i) * step
+			worldY := float64(j) * step
+
+			px := (float32(worldX) - float32(bounds.Min.X())) * x_scale
+			py := (float32(worldY) - float32(bounds.Min.Y())) * y_scale
+
+			for phType, avgPh := range mp {
+				strength := avgPh.Strength()
+				if strength <= 0 {
 					continue
 				}
+
 				var pcolor color.RGBA
-				switch phm.Type {
+				switch phType {
 				case ph.PheremoneHome:
 					pcolor = color.RGBA{199, 25, 224, 255}
 				case ph.PheremoneFood:
@@ -90,19 +103,12 @@ func DrawPheremones(screen *ebiten.Image, pheremones []ph.PheremoneMark, w *worl
 				case ph.PheremoneDeath:
 					pcolor = color.RGBA{255, 0, 255, 128}
 				}
-				px := (float32(phm.Pos.X()) - float32(bounds.Min.X())) * x_scale
-				py := (float32(phm.Pos.Y()) - float32(bounds.Min.Y())) * y_scale
-				drawInfos[phi] = PhDrawInfo{PColor: pcolor, X: px, Y: py}
+
+				// Scale radius by strength (clamped for visibility)
+				radius := float32(math.Max(0.5, math.Min(3.0, strength*2.0)))
+				vector.FillCircle(screen, px, py, radius, pcolor, false)
 			}
-			wg.Done()
-		}()
-	}
-	wg.Wait()
-	for _, di := range drawInfos {
-		if di.X == 0 && di.Y == 0 {
-			continue
 		}
-		vector.FillCircle(screen, di.X, di.Y, 1, di.PColor, false)
 	}
 }
 
@@ -183,7 +189,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	// the silly way with vectors for now
 	DrawWorld(screen, g.HiveSim.World, g.Camera)
 	// draw pheremones
-	DrawPheremones(screen, g.HiveSim.World.GetPheremones(), g.HiveSim.World, g.Camera)
+	DrawPheremones(screen, g.HiveSim.World, g.Camera)
 	// draw ants
 	DrawAnts(screen, g.HiveSim.WorkerAnts, g.HiveSim.World, g.Camera)
 }

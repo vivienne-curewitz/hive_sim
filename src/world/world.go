@@ -168,7 +168,7 @@ func (w *World) Init() {
 			Pos:    utils.NewCoordinate(x, y),
 			Amount: atomic.Int32{},
 			Type:   FoodTypes[rand.IntN(len(FoodTypes))],
-			Radius: 0.2,
+			Radius: 0.4,
 		}
 		cx := int(w.Resources[i].Pos.X())
 		cy := int(w.Resources[i].Pos.Y())
@@ -235,11 +235,18 @@ func (w *World) GetAveragePheremones(pos utils.Coordinate) map[pheremone.Pheremo
 	return w.findAvgPheremone(pos)
 }
 
+// large search
 func (w *World) GetNearbyResource(pos utils.Coordinate) *FoodSource {
-	i := int(pos.X())
-	j := int(pos.Y())
-	nearbyResources := w.FoodSourceCells[i][j]
-	return nearbyResources
+	x := int(pos.X())
+	y := int(pos.Y())
+	for i := x - 1; i <= x+1; i += 1 {
+		for j := y - 1; j <= y+1; j += 1 {
+			if w.FoodSourceCells[i][j] != nil {
+				return w.FoodSourceCells[i][j]
+			}
+		}
+	}
+	return nil
 }
 
 // returns the direction of the average gradient of the given pheremone type in the area around the ant

@@ -30,8 +30,8 @@ const (
 type Action int
 
 const (
-	RetrieveFood Action = iota
-	DeliverFood
+	FindFood Action = iota
+	RetrieveFood
 	ActionRest
 	Wander
 )
@@ -134,18 +134,23 @@ func (wa *WorkerAnt) Rest() {
 	wa.tiredness = 0
 }
 
+func (wa *WorkerAnt) foundFood(res *world.FoodSource, home utils.Coordinate) {
+	wa.CurrentAction = RetrieveFood
+	wa.Direction = wa.Pos.AngleTo(home) // kind of know where to go
+	res.TakeX(5)
+	wa.LastKnownLandmark = Landmark{
+		Position: res.Pos,
+		Type:     pheremone.PheremoneFood,
+	}
+}
+
 // set action and direction
 func (wa *WorkerAnt) ChooseAction(w *world.World, home utils.Coordinate) {
 	if wa.CurrentAction == Wander {
 		// check for resource nearby
 		res := w.GetNearbyResource(wa.Pos)
-		if res != nil {
-			wa.CurrentAction = DeliverFood
-			wa.Direction = math.Mod(wa.Direction+math.Pi, 2*math.Pi) // turn around to go back to home
-			wa.LastKnownLandmark = Landmark{
-				Position: res.Pos,
-				Type:     pheremone.PheremoneFood,
-			}
+		if res != nil && wa.Pos.DistanceTo(res.Pos) < res.Radius {
+			wa.foundFood(res, home)
 			return
 			// not worried about getting tired rn, since no rest mechanic exists
 			//	} else if wa.Exhausted {
@@ -157,11 +162,11 @@ func (wa *WorkerAnt) ChooseAction(w *world.World, home utils.Coordinate) {
 		} else {
 			foodDirection, realDirection := w.GetPheremoneDirection(wa.Pos, pheremone.PheremoneFood)
 			if realDirection {
-				wa.CurrentAction = RetrieveFood
+				wa.CurrentAction = FindFood
 				wa.Direction = foodDirection
 			}
 		}
-	} else if wa.CurrentAction == DeliverFood {
+	} else if wa.CurrentAction == RetrieveFood {
 		delta := wa.Pos.DistanceTo(home)
 		if delta < 1.0 {
 			// food is delivered
@@ -185,17 +190,13 @@ func (wa *WorkerAnt) ChooseAction(w *world.World, home utils.Coordinate) {
 				}
 			}
 		}
-	} else if wa.CurrentAction == RetrieveFood {
+	} else if wa.CurrentAction == FindFood {
 		res := w.GetNearbyResource(wa.Pos)
 		if res != nil && wa.Pos.DistanceTo(res.Pos) < res.Radius {
 			// found food!!
-			wa.CurrentAction = DeliverFood
-			wa.Direction = math.Mod(wa.Direction+math.Pi, 2*math.Pi) // turn around to go back to home
-			res.TakeX(5)
-			wa.LastKnownLandmark = Landmark{
-				Position: res.Pos,
-				Type:     pheremone.PheremoneFood,
-			}
+			wa.foundFood(res, home)
+		} else if res != nil {
+			wa.Direction = wa.Pos.AngleTo(res.Pos)
 		} else {
 			// reorient
 			fph, exists := w.GetPheremoneDirection(wa.Pos, pheremone.PheremoneFood)
