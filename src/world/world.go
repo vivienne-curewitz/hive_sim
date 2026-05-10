@@ -17,7 +17,7 @@ import (
 
 type Cell int
 
-const pheremoneIndexPerCell = 2
+const PheremoneIndexPerCell = 2
 
 const (
 	Dirt Cell = iota
@@ -139,10 +139,10 @@ func (w *World) Init() {
 	}
 	// init Pheremones
 	w.Pheremones = make([]pheremone.PheremoneMark, 1_000_000)
-	w.AveragePheremoneCell = make([][]map[pheremone.Pheremone]pheremone.AveragePheremone, pheremoneIndexPerCell*w.length)
-	for i := 0; i < w.length*pheremoneIndexPerCell; i += 1 {
-		w.AveragePheremoneCell[i] = make([]map[pheremone.Pheremone]pheremone.AveragePheremone, pheremoneIndexPerCell*w.height)
-		for j := 0; j < w.height*pheremoneIndexPerCell; j += 1 {
+	w.AveragePheremoneCell = make([][]map[pheremone.Pheremone]pheremone.AveragePheremone, PheremoneIndexPerCell*w.length)
+	for i := 0; i < w.length*PheremoneIndexPerCell; i += 1 {
+		w.AveragePheremoneCell[i] = make([]map[pheremone.Pheremone]pheremone.AveragePheremone, PheremoneIndexPerCell*w.height)
+		for j := 0; j < w.height*PheremoneIndexPerCell; j += 1 {
 			w.AveragePheremoneCell[i][j] = make(map[pheremone.Pheremone]pheremone.AveragePheremone)
 		}
 	}
@@ -185,8 +185,8 @@ func (w *World) Init() {
 }
 
 func (w *World) findAvgPheremone(pos utils.Coordinate) map[pheremone.Pheremone]pheremone.AveragePheremone {
-	cx := int(pos.X() * pheremoneIndexPerCell)
-	cy := int(pos.Y() * pheremoneIndexPerCell)
+	cx := int(pos.X() * PheremoneIndexPerCell)
+	cy := int(pos.Y() * PheremoneIndexPerCell)
 	if cx < 0 || cx >= len(w.AveragePheremoneCell) || cy < 0 || cy >= len(w.AveragePheremoneCell[0]) {
 		return nil
 	}
@@ -259,7 +259,7 @@ func (w *World) GetPheremoneDirection(pos utils.Coordinate, phType pheremone.Phe
 	var sumY float64 = 0
 	var real bool = false
 	viewDistance := 5.0
-	const step float64 = 1.0 / pheremoneIndexPerCell
+	const step float64 = 1.0 / PheremoneIndexPerCell
 	for i := pos.X() - viewDistance*step; i < pos.X()+viewDistance*step; i += step {
 		for j := pos.Y() - viewDistance*step; j < pos.Y()+viewDistance*step; j += step {
 			avgPhs := w.findAvgPheremone(utils.NewCoordinate(i, j))

@@ -69,7 +69,7 @@ func DrawPheremones(screen *ebiten.Image, w *world.World, cam *camera.Camera) {
 	x_scale, y_scale := cam.GetScale()
 	bounds := cam.GetBounds()
 
-	const phIdx = 5 // should match pheremoneIndexPerCell in world.go
+	const phIdx = world.PheremoneIndexPerCell // should match pheremoneIndexPerCell in world.go
 	step := 1.0 / float64(phIdx)
 
 	// Calculate visible range in the pheremone grid
