@@ -17,7 +17,7 @@ import (
 
 type Cell int
 
-const pheremoneIndexPerCell = 5
+const pheremoneIndexPerCell = 2
 
 const (
 	Dirt Cell = iota
@@ -187,6 +187,9 @@ func (w *World) Init() {
 func (w *World) findAvgPheremone(pos utils.Coordinate) map[pheremone.Pheremone]pheremone.AveragePheremone {
 	cx := int(pos.X() * pheremoneIndexPerCell)
 	cy := int(pos.Y() * pheremoneIndexPerCell)
+	if cx < 0 || cx >= len(w.AveragePheremoneCell) || cy < 0 || cy >= len(w.AveragePheremoneCell[0]) {
+		return nil
+	}
 	return w.AveragePheremoneCell[cx][cy]
 }
 
@@ -255,11 +258,14 @@ func (w *World) GetPheremoneDirection(pos utils.Coordinate, phType pheremone.Phe
 	var sumX float64 = 0
 	var sumY float64 = 0
 	var real bool = false
-	viewDistance := 25.0
+	viewDistance := 5.0
 	const step float64 = 1.0 / pheremoneIndexPerCell
-	for i := pos.X() - viewDistance*step; i < pos.X()+viewDistance*step; i += pheremoneIndexPerCell {
-		for j := pos.Y() - viewDistance*step; j < pos.Y()+viewDistance*step; j += pheremoneIndexPerCell {
+	for i := pos.X() - viewDistance*step; i < pos.X()+viewDistance*step; i += step {
+		for j := pos.Y() - viewDistance*step; j < pos.Y()+viewDistance*step; j += step {
 			avgPhs := w.findAvgPheremone(utils.NewCoordinate(i, j))
+			if avgPhs == nil {
+				continue
+			}
 			avgPh, exists := avgPhs[phType]
 			if exists {
 				real = true

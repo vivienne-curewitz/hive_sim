@@ -11,6 +11,7 @@ import (
 	"hive_sim/src/camera"
 	ph "hive_sim/src/pheremone"
 	"hive_sim/src/sim"
+	"hive_sim/src/utils"
 	"hive_sim/src/world"
 
 	"github.com/hajimehoshi/ebiten/v2"
@@ -18,10 +19,11 @@ import (
 )
 
 type Game struct {
-	HiveSim        *sim.Simulation
-	frametime      float64
-	Camera         *camera.Camera
-	CursorPosition CursorPos
+	HiveSim             *sim.Simulation
+	frametime           float64
+	Camera              *camera.Camera
+	CursorPosition      CursorPos
+	ShowPheremoneArrows bool
 }
 
 type CursorPos struct {
@@ -29,7 +31,11 @@ type CursorPos struct {
 	Y int
 }
 
-func CameraControl(cam *camera.Camera, prevCursorPos *CursorPos) {
+func CameraControl(g *Game) {
+	cam := g.Camera
+	prevCursorPos := &g.CursorPosition
+	g.ShowPheremoneArrows = ebiten.IsKeyPressed(ebiten.KeyF)
+
 	// case zoom in/out with mouse wheel
 	_, dy := ebiten.Wheel()
 	// log.Printf("Wheel: dx=%f, dy=%f\n", dx, dy)
@@ -48,7 +54,7 @@ func CameraControl(cam *camera.Camera, prevCursorPos *CursorPos) {
 }
 
 func (g *Game) Update() error {
-	go CameraControl(g.Camera, &g.CursorPosition)
+	go CameraControl(g)
 	g.HiveSim.SingleStep()
 	return nil
 }
@@ -208,6 +214,52 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	DrawPheremones(screen, g.HiveSim.World, g.Camera)
 	// draw ants
 	DrawAnts(screen, g.HiveSim.WorkerAnts, g.HiveSim.World, g.Camera)
+
+	DrawPheremoneArrows(screen, g)
+}
+
+func drawArrow(screen *ebiten.Image, x, y float32, angle float64, clr color.Color) {
+	const arrowLength = 40
+	const headLength = 10
+	const headAngle = math.Pi / 6
+
+	x2 := x + float32(math.Cos(angle)*arrowLength)
+	y2 := y + float32(math.Sin(angle)*arrowLength)
+
+	// Main line
+	vector.StrokeLine(screen, x, y, x2, y2, 2, clr, false)
+
+	// Arrow head
+	angle1 := angle + math.Pi + headAngle
+	angle2 := angle + math.Pi - headAngle
+
+	hx1 := x2 + float32(math.Cos(angle1)*headLength)
+	hy1 := y2 + float32(math.Sin(angle1)*headLength)
+	hx2 := x2 + float32(math.Cos(angle2)*headLength)
+	hy2 := y2 + float32(math.Sin(angle2)*headLength)
+
+	vector.StrokeLine(screen, x2, y2, hx1, hy1, 2, clr, false)
+	vector.StrokeLine(screen, x2, y2, hx2, hy2, 2, clr, false)
+}
+
+func DrawPheremoneArrows(screen *ebiten.Image, g *Game) {
+	if !g.ShowPheremoneArrows {
+		return
+	}
+
+	cx, cy := ebiten.CursorPosition()
+	wx, wy := g.Camera.ScreenToWorld(float64(cx), float64(cy))
+	pos := utils.NewCoordinate(wx, wy)
+
+	// Food pheremone arrow
+	if dir, ok := g.HiveSim.World.GetPheremoneDirection(pos, ph.PheremoneFood); ok {
+		drawArrow(screen, float32(cx), float32(cy), dir, color.RGBA{255, 255, 0, 128})
+	}
+
+	// Home pheremone arrow
+	if dir, ok := g.HiveSim.World.GetPheremoneDirection(pos, ph.PheremoneHome); ok {
+		drawArrow(screen, float32(cx), float32(cy), dir, color.RGBA{199, 25, 224, 255})
+	}
 }
 
 func (g *Game) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHeight int) {

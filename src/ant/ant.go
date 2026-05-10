@@ -65,7 +65,7 @@ func NewWorkerAnt(pos utils.Coordinate, home utils.Coordinate) WorkerAnt {
 		hunger:            0.0,
 		tiredness:         0.0,
 		hitpoints:         100.0,
-		Speed:             0.1,
+		Speed:             1.0,
 		Direction:         rand.Float64() * 2 * math.Pi,
 		LastKnownLandmark: getHomeLandmark(home),
 		Exhausted:         false,
