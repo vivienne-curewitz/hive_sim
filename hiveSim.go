@@ -5,6 +5,7 @@ import (
 	"log"
 	"math"
 	"runtime"
+	"sync"
 
 	"hive_sim/src/ant"
 	"hive_sim/src/camera"
@@ -52,13 +53,22 @@ func (g *Game) Update() error {
 	return nil
 }
 
+type PhDrawInfo struct {
+	PColor color.RGBA
+	X      float32
+	Y      float32
+}
+
 func DrawPheremones(screen *ebiten.Image, pheremones []ph.PheremoneMark, w *world.World, cam *camera.Camera) {
-	cpus := runtime.NumCPU()
+	cpus := runtime.NumCPU() / 2
 	x_scale, y_scale := cam.GetScale()
 	bounds := cam.GetBounds()
+	drawInfos := make([]PhDrawInfo, len(pheremones))
+	wg := sync.WaitGroup{}
+	wg.Add(cpus)
 	for cpuI := range cpus {
 		// multithreading here causes the bad bad
-		func() {
+		go func() {
 			start := cpuI * (len(pheremones)/cpus + 1)
 			end := (cpuI + 1) * (len(pheremones)/cpus + 1)
 			if end > len(pheremones) {
@@ -82,9 +92,17 @@ func DrawPheremones(screen *ebiten.Image, pheremones []ph.PheremoneMark, w *worl
 				}
 				px := (float32(phm.Pos.X()) - float32(bounds.Min.X())) * x_scale
 				py := (float32(phm.Pos.Y()) - float32(bounds.Min.Y())) * y_scale
-				vector.FillCircle(screen, px, py, 1, pcolor, false)
+				drawInfos[phi] = PhDrawInfo{PColor: pcolor, X: px, Y: py}
 			}
+			wg.Done()
 		}()
+	}
+	wg.Wait()
+	for _, di := range drawInfos {
+		if di.X == 0 && di.Y == 0 {
+			continue
+		}
+		vector.FillCircle(screen, di.X, di.Y, 1, di.PColor, false)
 	}
 }
 
@@ -122,22 +140,40 @@ func DrawWorld(screen *ebiten.Image, w *world.World, cam *camera.Camera) {
 }
 
 func DrawAnts(screen *ebiten.Image, ants []ant.WorkerAnt, w *world.World, cam *camera.Camera) {
+	cpus := runtime.NumCPU() / 2
 	x_scale, y_scale := cam.GetScale()
 	bounds := cam.GetBounds()
-	for _, ant := range ants {
-		if !camera.InBounds(ant.Pos, bounds) {
-			continue
-		}
-		var acolor color.RGBA
-		switch {
-		case ant.Exhausted:
-			acolor = color.RGBA{255, 0, 0, 255}
-		default:
-			acolor = color.RGBA{255, 255, 255, 255}
-		}
-		px := (float32(ant.Pos.X()) - float32(bounds.Min.X())) * x_scale
-		py := (float32(ant.Pos.Y()) - float32(bounds.Min.Y())) * y_scale
-		vector.FillRect(screen, px, py, 1, 1, acolor, false)
+	antDrawInfos := make([]PhDrawInfo, len(ants))
+	wg := sync.WaitGroup{}
+	wg.Add(cpus)
+	for cpuI := range cpus {
+		go func() {
+			start := cpuI * (len(ants)/cpus + 1)
+			end := (cpuI + 1) * (len(ants)/cpus + 1)
+			if end > len(ants) {
+				end = len(ants)
+			}
+			for ai, ant := range ants[start:end] {
+				if !camera.InBounds(ant.Pos, bounds) {
+					continue
+				}
+				var acolor color.RGBA
+				switch {
+				case ant.Exhausted:
+					acolor = color.RGBA{255, 0, 0, 255}
+				default:
+					acolor = color.RGBA{255, 255, 255, 255}
+				}
+				px := (float32(ant.Pos.X()) - float32(bounds.Min.X())) * x_scale
+				py := (float32(ant.Pos.Y()) - float32(bounds.Min.Y())) * y_scale
+				antDrawInfos[ai+start] = PhDrawInfo{PColor: acolor, X: px, Y: py}
+			}
+			wg.Done()
+		}()
+	}
+	wg.Wait()
+	for _, adi := range antDrawInfos {
+		vector.FillRect(screen, adi.X, adi.Y, 1, 1, adi.PColor, false)
 	}
 }
 

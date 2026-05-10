@@ -24,7 +24,7 @@ type Landmark struct {
 
 const (
 	PheremoneFrequency float64 = 0.25     // chance to drop per second
-	PheremoneLifetime  float64 = 60_000.0 // 5 minutes in ms
+	PheremoneLifetime  float64 = 30_000.0 // 5 minutes in ms
 )
 
 type Action int
