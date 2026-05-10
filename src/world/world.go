@@ -17,7 +17,7 @@ import (
 
 type Cell int
 
-const PheremoneIndexPerCell = 2
+const PheremoneIndexPerCell = 5
 
 const (
 	Dirt Cell = iota

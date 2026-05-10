@@ -159,7 +159,7 @@ func (wa *WorkerAnt) ChooseAction(w *world.World, home utils.Coordinate) {
 			foodDirection, realDirection := w.GetPheremoneDirection(wa.Pos, pheremone.PheremoneFood)
 			if realDirection {
 				wa.CurrentAction = FindFood
-				wa.Direction = foodDirection
+				wa.Direction = wa.Direction*0.9 + foodDirection*0.1
 				return
 			}
 		}
@@ -185,7 +185,7 @@ func (wa *WorkerAnt) ChooseAction(w *world.World, home utils.Coordinate) {
 			} else {
 				homeDir, hexists := w.GetPheremoneDirection(wa.Pos, pheremone.PheremoneHome)
 				if hexists {
-					wa.Direction = homeDir
+					wa.Direction = wa.Direction*0.9 + homeDir*0.1
 					wa.DirectionEntropy(0.002)
 				}
 				return
@@ -204,7 +204,7 @@ func (wa *WorkerAnt) ChooseAction(w *world.World, home utils.Coordinate) {
 			// reorient
 			fph, exists := w.GetPheremoneDirection(wa.Pos, pheremone.PheremoneFood)
 			if exists {
-				wa.Direction = fph
+				wa.Direction = wa.Direction*0.9 + fph*0.1
 				wa.DirectionEntropy(0.002)
 
 			} else {
