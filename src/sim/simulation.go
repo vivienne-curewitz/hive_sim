@@ -53,8 +53,8 @@ func (s *Simulation) Init() {
 	cy := float64(s.World.Height() / 2)
 	home := utils.NewCoordinate(cx, cy)
 	for i := range 10000 {
-		cx := rand.Float64()*10 - 5 + cx
-		cy := rand.Float64()*10 - 5 + cy
+		cx := rand.Float64() - 0.5 + cx
+		cy := rand.Float64() - 0.5 + cy
 		wa := ant.NewWorkerAnt(utils.NewCoordinate(cx, cy), home)
 		s.WorkerAnts[i] = wa
 		s.Ants[wa.ID] = &s.WorkerAnts[i]
@@ -97,9 +97,19 @@ func (s *Simulation) SingleStep() {
 		s.StepTimeSum = 0
 	}
 	// then, phase 2 -- interactions with other -- attack other ant, take resource, etc
-	for i := range len(s.WorkerAnts) {
-		ant := &s.WorkerAnts[i]
-		ant.ChooseAction(s.World, home)
+	for j := range processors {
+		wg.Add(processors)
+		go func() {
+			startInd := len(s.WorkerAnts) / processors * j
+			end := len(s.WorkerAnts) / processors * (j + 1)
+			if end > len(s.WorkerAnts) {
+				end = len(s.WorkerAnts)
+			}
+			for i := startInd; i < end; i+= 1 {
+				ant := &s.WorkerAnts[]
+				ant.ChooseAction(s.World, home)
+			}
+		}()
 	}
 	// pheremones first
 	phStartTime := time.Now().UnixMicro()

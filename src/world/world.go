@@ -3,6 +3,7 @@ package world
 import (
 	"image/color"
 	"log"
+	"math"
 	"math/rand/v2"
 	"sync/atomic"
 	"time"
@@ -15,6 +16,8 @@ import (
 )
 
 type Cell int
+
+const pheremoneIndexPerCell = 5
 
 const (
 	Dirt Cell = iota
@@ -136,10 +139,10 @@ func (w *World) Init() {
 	}
 	// init Pheremones
 	w.Pheremones = make([]pheremone.PheremoneMark, 1_000_000)
-	w.AveragePheremoneCell = make([][]map[pheremone.Pheremone]pheremone.AveragePheremone, 10*w.length)
-	for i := 0; i < w.length*10; i += 1 {
-		w.AveragePheremoneCell[i] = make([]map[pheremone.Pheremone]pheremone.AveragePheremone, 10*w.height)
-		for j := 0; j < w.height*10; j += 1 {
+	w.AveragePheremoneCell = make([][]map[pheremone.Pheremone]pheremone.AveragePheremone, pheremoneIndexPerCell*w.length)
+	for i := 0; i < w.length*pheremoneIndexPerCell; i += 1 {
+		w.AveragePheremoneCell[i] = make([]map[pheremone.Pheremone]pheremone.AveragePheremone, pheremoneIndexPerCell*w.height)
+		for j := 0; j < w.height*pheremoneIndexPerCell; j += 1 {
 			w.AveragePheremoneCell[i][j] = make(map[pheremone.Pheremone]pheremone.AveragePheremone)
 		}
 	}
@@ -173,7 +176,7 @@ func (w *World) Init() {
 			i--
 			continue
 		}
-		w.Resources[i].Amount.Store(100)
+		w.Resources[i].Amount.Store(1000)
 		w.FoodSourceCells[cx][cy] = &w.Resources[i]
 	}
 	// init images
@@ -181,8 +184,8 @@ func (w *World) Init() {
 }
 
 func (w *World) findAvgPheremone(pos utils.Coordinate) map[pheremone.Pheremone]pheremone.AveragePheremone {
-	cx := int(pos.X() * 10)
-	cy := int(pos.Y() * 10)
+	cx := int(pos.X() * pheremoneIndexPerCell)
+	cy := int(pos.Y() * pheremoneIndexPerCell)
 	return w.AveragePheremoneCell[cx][cy]
 }
 
@@ -237,4 +240,27 @@ func (w *World) GetNearbyResource(pos utils.Coordinate) *FoodSource {
 	j := int(pos.Y())
 	nearbyResources := w.FoodSourceCells[i][j]
 	return nearbyResources
+}
+
+// returns the direction of the average gradient of the given pheremone type in the area around the ant
+func (w *World) GetPheremoneDirection(pos utils.Coordinate, phType pheremone.Pheremone) (float64, bool) {
+	var sumX float64 = 0
+	var sumY float64 = 0
+	var real bool = false
+	viewDistance := 5.0
+	const step float64 = 1.0 / pheremoneIndexPerCell
+	for i := pos.X() - viewDistance*step; i < pos.X()+viewDistance*step; i += pheremoneIndexPerCell {
+		for j := pos.Y() - viewDistance*step; j < pos.Y()+viewDistance*step; j += pheremoneIndexPerCell {
+			avgPhs := w.findAvgPheremone(utils.NewCoordinate(i, j))
+			avgPh, exists := avgPhs[phType]
+			if exists {
+				real = true
+				loc := utils.NewCoordinate(i, j)
+				dir := pos.AngleTo(loc)
+				sumX += math.Cos(dir) * avgPh.Strength()
+				sumY += math.Sin(dir) * avgPh.Strength()
+			}
+		}
+	}
+	return math.Atan2(sumY, sumX), real
 }

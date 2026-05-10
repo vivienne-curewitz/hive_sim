@@ -23,8 +23,8 @@ type Landmark struct {
 }
 
 const (
-	PheremoneFrequency float64 = 0.05      // chance to drop per second
-	PheremoneLifetime  float64 = 180_000.0 // 5 minutes in ms
+	PheremoneFrequency float64 = 0.25     // chance to drop per second
+	PheremoneLifetime  float64 = 60_000.0 // 5 minutes in ms
 )
 
 type Action int
@@ -65,7 +65,7 @@ func NewWorkerAnt(pos utils.Coordinate, home utils.Coordinate) WorkerAnt {
 		hunger:            0.0,
 		tiredness:         0.0,
 		hitpoints:         100.0,
-		Speed:             1.0,
+		Speed:             0.5,
 		Direction:         rand.Float64() * 2 * math.Pi,
 		LastKnownLandmark: getHomeLandmark(home),
 		Exhausted:         false,
@@ -98,17 +98,12 @@ func (wa *WorkerAnt) FindBearings(w *world.World) {
 }
 
 func (wa *WorkerAnt) SprayPheremone(currentTime float64) pheremone.PheremoneMark {
-	newLm := Landmark{
-		Position: wa.Pos,
-		Type:     wa.LastKnownLandmark.Type,
-	}
 	ph := pheremone.PheremoneMark{
-		Type:       newLm.Type,
+		Type:       wa.LastKnownLandmark.Type,
 		Pos:        wa.Pos,
-		Direction:  wa.Pos.AngleTo(wa.LastKnownLandmark.Position),
+		Strength:   1.0 / wa.Pos.DistanceTo(wa.LastKnownLandmark.Position),
 		Expiration: PheremoneLifetime + currentTime,
 	}
-	wa.LastKnownLandmark = newLm
 	return ph
 }
 
@@ -144,8 +139,6 @@ func (wa *WorkerAnt) ChooseAction(w *world.World, home utils.Coordinate) {
 	if wa.CurrentAction == Wander {
 		// check for resource nearby
 		res := w.GetNearbyResource(wa.Pos)
-		fph, exists := w.GetAveragePheremones(wa.Pos)[pheremone.PheremoneFood]
-		hph, hexists := w.GetAveragePheremones(wa.Pos)[pheremone.PheremoneHome]
 		if res != nil {
 			wa.CurrentAction = DeliverFood
 			wa.Direction = math.Mod(wa.Direction+math.Pi, 2*math.Pi) // turn around to go back to home
@@ -153,21 +146,23 @@ func (wa *WorkerAnt) ChooseAction(w *world.World, home utils.Coordinate) {
 				Position: res.Pos,
 				Type:     pheremone.PheremoneFood,
 			}
-		} else if exists {
-			wa.CurrentAction = RetrieveFood
-			wa.Direction = fph.AverageDirection()
-		} else if wa.Exhausted {
-			wa.CurrentAction = ActionRest
-			if hexists {
-				wa.Direction = hph.AverageDirection()
-			} else {
-				wa.Direction = wa.Pos.AngleTo(wa.LastKnownLandmark.Position)
-			}
+			return
+			// not worried about getting tired rn, since no rest mechanic exists
+			//	} else if wa.Exhausted {
+			//		wa.CurrentAction = ActionRest
+			//		homeDir, realDir := w.GetPheremoneDirection(wa.Pos, pheremone.PheremoneHome)
+			//		if realDir {
+			//			wa.Direction = homeDir
+			//		}
 		} else {
-			wa.CurrentAction = Wander
+			foodDirection, realDirection := w.GetPheremoneDirection(wa.Pos, pheremone.PheremoneFood)
+			if realDirection {
+				wa.CurrentAction = RetrieveFood
+				wa.Direction = foodDirection
+			}
 		}
 	} else if wa.CurrentAction == DeliverFood {
-		delta := math.Sqrt(math.Pow(wa.Pos.X()-home.X(), 2.0) + math.Pow(wa.Pos.Y()-home.Y(), 2))
+		delta := wa.Pos.DistanceTo(home)
 		if delta < 1.0 {
 			// food is delivered
 			wa.CurrentAction = Wander
@@ -178,12 +173,17 @@ func (wa *WorkerAnt) ChooseAction(w *world.World, home utils.Coordinate) {
 			wa.Direction = rand.Float64() * 2 * math.Pi
 		} else {
 			// orient again
-			hph, hexists := w.GetAveragePheremones(wa.Pos)[pheremone.PheremoneHome]
-			if hexists {
-				wa.Direction = hph.AverageDirection()
+			if wa.Pos.DistanceTo(home) < 10.0 { // the ant can just see home
+				wa.Direction = wa.Pos.AngleTo(home)
 				wa.DirectionEntropy(0.02)
+				return
+			} else {
+				homeDir, hexists := w.GetPheremoneDirection(wa.Pos, pheremone.PheremoneHome)
+				if hexists {
+					wa.Direction = homeDir
+					wa.DirectionEntropy(0.02)
+				}
 			}
-
 		}
 	} else if wa.CurrentAction == RetrieveFood {
 		res := w.GetNearbyResource(wa.Pos)
@@ -198,14 +198,12 @@ func (wa *WorkerAnt) ChooseAction(w *world.World, home utils.Coordinate) {
 			}
 		} else {
 			// reorient
-			fph, exists := w.GetAveragePheremones(wa.Pos)[pheremone.PheremoneFood]
+			fph, exists := w.GetPheremoneDirection(wa.Pos, pheremone.PheremoneFood)
 			if exists {
-				wa.Direction = fph.AverageDirection()
+				wa.Direction = fph
 				wa.DirectionEntropy(0.02)
 
 			}
 		}
 	}
-
-	// otherwise continue the current action
 }
