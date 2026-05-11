@@ -100,26 +100,26 @@ func (s *Simulation) SingleStep() {
 
 	// then, phase 2 -- interactions with other -- attack other ant, take resource, etc
 	actionStartTime := time.Now().UnixMicro()
-	maxFoodForceSpray := int(float64(len(s.WorkerAnts))*ant.PheremoneFrequency*s.TimeStep) / 2
-	foodAnts := make([]*ant.WorkerAnt, maxFoodForceSpray)
+	// maxFoodForceSpray := int(float64(len(s.WorkerAnts))*ant.PheremoneFrequency*s.TimeStep) / 2
+	// foodAnts := make([]*ant.WorkerAnt, maxFoodForceSpray)
 	for j := range processors {
 		wg.Add(1)
 		go func(pIndex int) {
 			startInd := len(s.WorkerAnts) / processors * pIndex
 			end := len(s.WorkerAnts) / processors * (pIndex + 1)
-			fsa := pIndex
+			// fsa := pIndex
 			if end > len(s.WorkerAnts) {
 				end = len(s.WorkerAnts)
 			}
 			for i := startInd; i < end; i += 1 {
 				cant := &s.WorkerAnts[i]
 				cant.ChooseAction(s.World, home)
-				if cant.CurrentAction == ant.RetrieveFood {
-					if fsa < maxFoodForceSpray {
-						foodAnts[fsa] = cant
-						fsa += processors
-					}
-				}
+				//if cant.CurrentAction == ant.RetrieveFood {
+				//	if fsa < maxFoodForceSpray {
+				//		foodAnts[fsa] = cant
+				//		fsa += processors
+				//	}
+				//}
 			}
 			wg.Done()
 		}(j)
@@ -136,19 +136,19 @@ func (s *Simulation) SingleStep() {
 		ph := s.WorkerAnts[ant].SprayPheremone(s.CurrentTime)
 		s.World.AddPheremone(ph)
 	}
-	nilCount := 0
-	for _, cat := range foodAnts {
-		if cat != nil {
-			nilCount = 0
-			ph := cat.SprayPheremone(s.CurrentTime)
-			s.World.AddPheremone(ph)
-		} else {
-			nilCount++
-			if nilCount > processors {
-				break
-			}
-		}
-	}
+	//nilCount := 0
+	//for _, cat := range foodAnts {
+	//	if cat != nil {
+	//		nilCount = 0
+	//		ph := cat.SprayPheremone(s.CurrentTime)
+	//		s.World.AddPheremone(ph)
+	//	} else {
+	//		nilCount++
+	//		if nilCount > processors {
+	//			break
+	//		}
+	//	}
+	//}
 	s.PheremoneTimeSum += int(time.Now().UnixMicro() - phStartTime)
 
 	// phase 3 -- resolution

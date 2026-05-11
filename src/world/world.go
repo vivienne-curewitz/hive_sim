@@ -17,7 +17,7 @@ import (
 
 type Cell int
 
-const PheremoneIndexPerCell = 5
+const PheremoneIndexPerCell = 1.0
 
 const (
 	Dirt Cell = iota
@@ -138,12 +138,23 @@ func (w *World) Init() {
 		}
 	}
 	// init Pheremones
-	w.Pheremones = make([]pheremone.PheremoneMark, 1_000_000)
+	home := utils.NewCoordinate(float64(w.length), float64(w.height))
+	pheremoneCircleDistance := 10.0
+	w.Pheremones = make([]pheremone.PheremoneMark, 20_000_000)
 	w.AveragePheremoneCell = make([][]map[pheremone.Pheremone]pheremone.AveragePheremone, PheremoneIndexPerCell*w.length)
 	for i := 0; i < w.length*PheremoneIndexPerCell; i += 1 {
 		w.AveragePheremoneCell[i] = make([]map[pheremone.Pheremone]pheremone.AveragePheremone, PheremoneIndexPerCell*w.height)
 		for j := 0; j < w.height*PheremoneIndexPerCell; j += 1 {
 			w.AveragePheremoneCell[i][j] = make(map[pheremone.Pheremone]pheremone.AveragePheremone)
+			dist := utils.NewCoordinate(float64(i)/PheremoneIndexPerCell, float64(j)/PheremoneIndexPerCell).DistanceTo(home)
+			if dist < pheremoneCircleDistance {
+				mark := pheremone.PheremoneMark{
+					Type:     pheremone.PheremoneHome,
+					Pos:      utils.NewCoordinate(float64(i)/PheremoneIndexPerCell, float64(j)/PheremoneIndexPerCell),
+					Strength: 1.0 / dist,
+				}
+				w.AveragePheremoneCell[i][j][pheremone.PheremoneHome] = pheremone.NewAveragePheremone(mark)
+			}
 		}
 	}
 	// init Food Sources
@@ -215,7 +226,9 @@ func (w *World) CullPheremones(currentTime float64) {
 
 func (w *World) AddPheremone(ph pheremone.PheremoneMark) {
 	w.LastPheremoneIndex = (w.LastPheremoneIndex + 1) % len(w.Pheremones)
-	w.Pheremones[w.LastPheremoneIndex] = ph
+	if ph.Type != pheremone.PheremoneHome {
+		w.Pheremones[w.LastPheremoneIndex] = ph
+	}
 	// add to Pheremone cell
 	mp := w.findAvgPheremone(ph.Pos)
 	avgPh, exists := mp[ph.Type]

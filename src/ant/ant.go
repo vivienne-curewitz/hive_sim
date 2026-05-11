@@ -23,8 +23,8 @@ type Landmark struct {
 }
 
 const (
-	PheremoneFrequency float64 = 0.25     // chance to drop per second
-	PheremoneLifetime  float64 = 30_000.0 // 5 minutes in ms
+	PheremoneFrequency float64 = 1.0      // chance to drop per second
+	PheremoneLifetime  float64 = 10_000.0 // 5 minutes in ms
 )
 
 type Action int
@@ -44,6 +44,13 @@ type Ant interface {
 	ChooseAction(w *world.World, home utils.Coordinate)
 }
 
+type phDirCache struct {
+	Direction float64
+	Type      pheremone.Pheremone
+	Location  utils.Coordinate
+	hits      int
+}
+
 type WorkerAnt struct {
 	ID                uuid.UUID
 	Pos               utils.Coordinate
@@ -56,6 +63,7 @@ type WorkerAnt struct {
 	LastKnownLandmark Landmark
 	Exhausted         bool
 	CurrentAction     Action
+	DirCache          phDirCache
 }
 
 func NewWorkerAnt(pos utils.Coordinate, home utils.Coordinate) WorkerAnt {
@@ -98,6 +106,13 @@ func (wa *WorkerAnt) FindBearings(w *world.World) {
 }
 
 func (wa *WorkerAnt) SprayPheremone(currentTime float64) pheremone.PheremoneMark {
+	//mult := 0.0
+	//switch wa.LastKnownLandmark.Type {
+	//case pheremone.PheremoneFood:
+	//	mult = 1
+	//case pheremone.PheremoneHome:
+	//	mult = 10
+	//}
 	ph := pheremone.PheremoneMark{
 		Type:       wa.LastKnownLandmark.Type,
 		Pos:        wa.Pos,
@@ -144,6 +159,30 @@ func (wa *WorkerAnt) foundFood(res *world.FoodSource, home utils.Coordinate) {
 	}
 }
 
+func (wa *WorkerAnt) setPhDirection(w *world.World, ptype pheremone.Pheremone) bool {
+	if wa.DirCache.Type == ptype && wa.DirCache.hits < 10 {
+		if wa.Pos.EqualsModStep(wa.DirCache.Location, world.PheremoneIndexPerCell) {
+			// cache hit
+			// wa.Direction = wa.Direction*0.9 + wa.DirCache.Direction*0.1
+			wa.Direction = wa.DirCache.Direction
+			wa.DirCache.hits += 1
+			return true
+		}
+	}
+	newDir, exists := w.GetPheremoneDirection(wa.Pos, ptype)
+	if exists {
+		// update wa.DirCache and wa.Direction
+		wa.DirCache.Type = ptype
+		wa.DirCache.Direction = newDir
+		wa.DirCache.Location = wa.Pos
+		wa.DirCache.hits = 0
+		wa.Direction = newDir
+		// wa.Direction = wa.Direction*0.9 + newDir*0.1
+		return true
+	}
+	return false
+}
+
 // set action and direction
 func (wa *WorkerAnt) ChooseAction(w *world.World, home utils.Coordinate) {
 	if wa.CurrentAction == Wander {
@@ -156,10 +195,9 @@ func (wa *WorkerAnt) ChooseAction(w *world.World, home utils.Coordinate) {
 			wa.CurrentAction = FindFood
 			return
 		} else {
-			foodDirection, realDirection := w.GetPheremoneDirection(wa.Pos, pheremone.PheremoneFood)
+			realDirection := wa.setPhDirection(w, pheremone.PheremoneFood)
 			if realDirection {
 				wa.CurrentAction = FindFood
-				wa.Direction = wa.Direction*0.9 + foodDirection*0.1
 				return
 			}
 		}
@@ -183,9 +221,8 @@ func (wa *WorkerAnt) ChooseAction(w *world.World, home utils.Coordinate) {
 				wa.DirectionEntropy(0.002)
 				return
 			} else {
-				homeDir, hexists := w.GetPheremoneDirection(wa.Pos, pheremone.PheremoneHome)
+				hexists := wa.setPhDirection(w, pheremone.PheremoneHome)
 				if hexists {
-					wa.Direction = wa.Direction*0.9 + homeDir*0.1
 					wa.DirectionEntropy(0.002)
 				}
 				return
@@ -202,11 +239,9 @@ func (wa *WorkerAnt) ChooseAction(w *world.World, home utils.Coordinate) {
 			return
 		} else {
 			// reorient
-			fph, exists := w.GetPheremoneDirection(wa.Pos, pheremone.PheremoneFood)
+			exists := wa.setPhDirection(w, pheremone.PheremoneFood)
 			if exists {
-				wa.Direction = wa.Direction*0.9 + fph*0.1
 				wa.DirectionEntropy(0.002)
-
 			} else {
 				wa.CurrentAction = Wander
 			}

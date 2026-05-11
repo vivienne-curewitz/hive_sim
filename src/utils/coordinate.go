@@ -43,3 +43,10 @@ func (ca Coordinate) AngleTo(other Coordinate) float64 {
 func (ca Coordinate) DistanceTo(other Coordinate) float64 {
 	return math.Hypot(ca.x-other.x, ca.y-other.y)
 }
+
+func (ca Coordinate) EqualsModStep(other Coordinate, step float64) bool {
+	if int(ca.x*step) == int(other.x*step) {
+		return int(ca.y*step) == int(other.y*step)
+	}
+	return false
+}
