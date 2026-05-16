@@ -216,7 +216,11 @@ func (w *World) CullPheremones(currentTime float64) {
 				continue
 			}
 			avgPh.RemovePheremoneMark(ph)
-			mp[ph.Type] = avgPh
+			if avgPh.Count > 0 {
+				mp[ph.Type] = avgPh
+			} else {
+				delete(mp, ph.Type)
+			}
 		} else {
 			w.FirstValidPheremone = i
 			break
